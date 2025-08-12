@@ -1,0 +1,50 @@
+{
+  "app_name": "Coronary Clear Vision",
+  "version": "1.0.0",
+  "debug_mode": false,
+  "log_level": "INFO",
+  "log_to_file": true,
+  "log_dir": "logs",
+  
+  "calibration": {
+    "min_calibration_factor": 0.01,
+    "max_calibration_factor": 100.0,
+    "min_catheter_width_pixels": 15,
+    "min_manual_distance_pixels": 10.0,
+    "max_reference_distance_mm": 50.0
+  },
+  
+  "rws": {
+    "min_mld_mm": 0.2,
+    "max_mld_mm": 6.0,
+    "min_frames_for_analysis": 3,
+    "outlier_removal_threshold": 6,
+    "num_outliers_to_remove": 2,
+    "max_rws_percentage": 200.0
+  },
+  
+  "qca": {
+    "min_centerline_points": 10,
+    "diameter_smoothing_window": 5,
+    "max_search_distance_pixels": 30,
+    "stenosis_threshold_percent": 50.0,
+    "global_ref_percentile": 75.0
+  },
+  
+  "performance": {
+    "enable_parallel_processing": true,
+    "max_worker_threads": 4,
+    "cache_enabled": true,
+    "cache_size_mb": 500,
+    "lazy_load_models": true,
+    "progress_update_interval_ms": 100
+  },
+  
+  "ui": {
+    "default_font_size": 13,
+    "show_tooltips": true,
+    "auto_save_interval_seconds": 300,
+    "max_recent_files": 10,
+    "dark_mode": false
+  }
+}

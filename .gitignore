@@ -1,0 +1,145 @@
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+*.pyo
+*.pyd
+.Python
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+.DS_Store
+*.sublime-*
+.spyderproject
+.spyproject
+.ropeproject
+
+# Claude/AI Assistant Related
+.claude/
+claude-artifacts/
+claude-outputs/
+.assistant/
+.ai-cache/
+*.claude-session
+# Note: CLAUDE.md is documentation, not excluded
+
+# Logs
+*.log
+logs/
+crash_reports/
+app_*.log
+*.log.*
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+
+# Project specific
+*.pkl
+*.h5
+*.pth
+*.onnx
+models/
+checkpoints/
+*.dicom
+*.dcm
+data/
+output/
+results/
+qca_summary.csv
+settings.json
+config.ini
+secrets.yaml
+
+# Temporary files
+*.tmp
+*.rtf
+test_*.py
+tmp/
+temp/
+.temp/
+*.bak
+*.backup
+*~
+.cache/
+
+# Medical data (privacy)
+patient_data/
+*.nii
+*.nii.gz
+*.mha
+*.mhd
+*.raw
+
+# Large files
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Test coverage
+htmlcov/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Documentation builds
+docs/_build/
+docs/_static/
+docs/_templates/
+
+# PyInstaller
+*.spec
+build/
+dist/
+
+# OS files
+Thumbs.db
+desktop.ini
+.Spotlight-V100
+.Trashes
+._*
+
+# Backup files
+*.orig
+*.rej
