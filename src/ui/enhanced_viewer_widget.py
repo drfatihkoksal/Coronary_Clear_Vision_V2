@@ -479,22 +479,22 @@ class OverlayItem(QGraphicsItem):
             for idx, (point_idx, (x, y)) in enumerate(labeled_points):
                 # Convert to int to avoid numpy.float32 type error
                 x, y = int(x), int(y)
-                # Draw 4x4 square like AngioPy encoding (green channel)
+                # Draw 3x3 square like AngioPy encoding (green channel)
                 painter.setPen(QPen(QColor(0, 255, 0), 1))  # Green, 1 pixel
-                painter.setBrush(QBrush(QColor(0, 255, 0, 180)))  # Semi-transparent green fill
-                painter.drawRect(x - 2, y - 2, 4, 4)  # 4x4 square centered at point
+                painter.setBrush(QBrush(QColor(0, 255, 0, 200)))  # Semi-transparent green fill
+                painter.drawEllipse(QPointF(x, y), 2, 2)  # 2 pixel radius circle centered at point
 
                 # Skip drawing labels for P, D, M points to avoid confusion
 
         # Paint additional guide points (all points except first and last)
         if len(points) > 2:
-            # Draw 4x4 squares like AngioPy encoding (blue channel)
+            # Draw 3x3 circles like AngioPy encoding (blue channel)
             painter.setPen(QPen(QColor(0, 0, 255), 1))  # Blue, 1 pixel
-            painter.setBrush(QBrush(QColor(0, 0, 255, 180)))  # Semi-transparent blue fill
+            painter.setBrush(QBrush(QColor(0, 0, 255, 200)))  # Semi-transparent blue fill
             for i in range(1, len(points) - 1):  # Skip first and last
                 x, y = points[i]
                 x, y = int(x), int(y)  # Convert to int
-                painter.drawRect(x - 2, y - 2, 4, 4)  # 4x4 square centered at point
+                painter.drawEllipse(QPointF(x, y), 2, 2)  # 2 pixel radius circle centered at point
 
     # Removed paint_calibration_line method - no line drawing needed
 
@@ -502,25 +502,25 @@ class OverlayItem(QGraphicsItem):
         """Paint calibration click points - same style as segmentation"""
         for i, (x, y) in enumerate(self.calibration_points[:2]):
             x, y = int(x), int(y)  # Convert to int
-            # Draw 4x4 square for calibration point
+            # Draw small circle for calibration point
             painter.setPen(QPen(QColor(255, 0, 0), 1))  # Red, 1 pixel
-            painter.setBrush(QBrush(QColor(255, 0, 0, 180)))  # Semi-transparent red fill
-            painter.drawRect(x - 2, y - 2, 4, 4)  # 4x4 square centered at point
+            painter.setBrush(QBrush(QColor(255, 0, 0, 200)))  # Semi-transparent red fill
+            painter.drawEllipse(QPointF(x, y), 2, 2)  # 2 pixel radius circle centered at point
 
             # Add label with background for better readability
-            font = QFont("Arial", 10, QFont.Weight.Bold)
+            font = QFont("Arial", 8, QFont.Weight.Bold)
             painter.setFont(font)
             label = "C1" if i == 0 else "C2"  # C for Calibration
 
             # Draw text background
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QBrush(QColor(0, 0, 0, 180)))  # Semi-transparent black
-            painter.drawRoundedRect(x + 8, y - 18, 25, 16, 3, 3)
+            painter.drawRoundedRect(x + 5, y - 15, 20, 12, 2, 2)
 
             # Draw text
             painter.setPen(QPen(QColor(255, 255, 255), 1))
             painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.drawText(x + 10, y - 5, label)
+            painter.drawText(x + 7, y - 5, label)
 
     def paint_calibration_mask(self, painter: QPainter):
         """Paint calibration segmentation mask"""
@@ -949,6 +949,17 @@ class EnhancedDicomViewer(QGraphicsView):
     def _handle_point_placement(self, dicom_x: int, dicom_y: int, event: QMouseEvent):
         """Unified point placement handler for all modes"""
         current_mode = self.mode_manager.current_mode
+        
+        # Apply vessel centering for tracking mode (VIEW mode with tracking enabled)
+        if current_mode == ViewerMode.VIEW and self.tracking_enabled:
+            centered_x, centered_y = self.find_vessel_center(dicom_x, dicom_y)
+            logger.info(f"Vessel centering in tracking mode: ({dicom_x}, {dicom_y}) -> ({centered_x}, {centered_y})")
+            dicom_x, dicom_y = centered_x, centered_y
+        # Apply catheter centering for calibration mode
+        elif current_mode == ViewerMode.CALIBRATE:
+            centered_x, centered_y = self.find_catheter_center(dicom_x, dicom_y)
+            logger.info(f"Catheter centering in calibration mode: ({dicom_x}, {dicom_y}) -> ({centered_x}, {centered_y})")
+            dicom_x, dicom_y = centered_x, centered_y
         
         # Initialize frame points if needed
         if self.current_frame_index not in self.overlay_item.frame_points:
@@ -1843,7 +1854,7 @@ class EnhancedDicomViewer(QGraphicsView):
             QMessageBox.warning(self, "Re-tracking Failed", 
                               "Failed to re-track points from the edited frame.")
 
-    def get_point_at_position(self, x: int, y: int, threshold: int = 10) -> int:
+    def get_point_at_position(self, x: int, y: int, threshold: int = 8) -> int:
         """Get index of point at given position, -1 if none found"""
         if self.current_frame_index not in self.overlay_item.frame_points:
             return -1
@@ -1950,14 +1961,222 @@ class EnhancedDicomViewer(QGraphicsView):
                 self._request_update()
                 self.points_changed.emit()
 
+    def find_catheter_center(self, x: int, y: int, window_size: int = 31) -> Tuple[int, int]:
+        """
+        Find the catheter center near the clicked point.
+        Catheters can be either dark or bright depending on the imaging modality.
+        
+        Args:
+            x, y: Initial click coordinates
+            window_size: Size of search window (should be odd)
+        
+        Returns:
+            Centered coordinates (x, y)
+        """
+        try:
+            # Ensure we have a valid frame
+            if self.current_frame is None:
+                return x, y
+            
+            # Get frame dimensions
+            height, width = self.current_frame.shape[:2]
+            
+            # Define search window boundaries
+            half_window = window_size // 2
+            x_min = max(0, x - half_window)
+            x_max = min(width, x + half_window + 1)
+            y_min = max(0, y - half_window)
+            y_max = min(height, y + half_window + 1)
+            
+            # Extract window from grayscale frame
+            if len(self.current_frame.shape) == 3:
+                gray_frame = cv2.cvtColor(self.current_frame, cv2.COLOR_BGR2GRAY)
+            else:
+                gray_frame = self.current_frame
+            
+            window = gray_frame[y_min:y_max, x_min:x_max]
+            
+            # Apply Gaussian blur to reduce noise
+            blurred = cv2.GaussianBlur(window, (5, 5), 1.5)
+            
+            # Method 1: Find extremum (either darkest or brightest)
+            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(blurred)
+            mean_val = np.mean(blurred)
+            
+            # Determine if we should look for dark or bright catheter
+            # by checking which extreme is further from mean
+            dark_diff = abs(mean_val - min_val)
+            bright_diff = abs(max_val - mean_val)
+            
+            if dark_diff > bright_diff:
+                # Dark catheter
+                extremum_x = x_min + min_loc[0]
+                extremum_y = y_min + min_loc[1]
+                is_dark = True
+                threshold_factor = 0.8  # Look for pixels darker than 80% of mean
+            else:
+                # Bright catheter
+                extremum_x = x_min + max_loc[0]
+                extremum_y = y_min + max_loc[1]
+                is_dark = False
+                threshold_factor = 1.2  # Look for pixels brighter than 120% of mean
+            
+            # Method 2: Weighted centroid based on contrast
+            if is_dark:
+                # For dark catheter, invert intensities
+                weighted = 255 - blurred
+                threshold = np.percentile(weighted, 75)  # Top 25% darkest pixels
+            else:
+                # For bright catheter, use original intensities
+                weighted = blurred
+                threshold = np.percentile(weighted, 75)  # Top 25% brightest pixels
+            
+            # Apply threshold to focus on catheter region
+            mask = weighted > threshold
+            weighted = weighted * mask
+            
+            # Calculate weighted centroid
+            total_weight = np.sum(weighted)
+            if total_weight > 0:
+                y_coords, x_coords = np.meshgrid(range(window.shape[0]), range(window.shape[1]), indexing='ij')
+                weighted_x = np.sum(x_coords * weighted) / total_weight
+                weighted_y = np.sum(y_coords * weighted) / total_weight
+                
+                # Convert to image coordinates
+                centroid_x = int(x_min + weighted_x)
+                centroid_y = int(y_min + weighted_y)
+                
+                # Choose between extremum and weighted centroid
+                dist = np.sqrt((extremum_x - centroid_x)**2 + (extremum_y - centroid_y)**2)
+                if dist < window_size / 3:  # Within third of window size
+                    final_x, final_y = centroid_x, centroid_y
+                    logger.debug(f"Using weighted centroid for catheter: ({x}, {y}) -> ({final_x}, {final_y})")
+                else:
+                    final_x, final_y = extremum_x, extremum_y
+                    logger.debug(f"Using extremum for catheter: ({x}, {y}) -> ({final_x}, {final_y})")
+            else:
+                final_x, final_y = extremum_x, extremum_y
+                logger.debug(f"Using extremum (no valid weights): ({x}, {y}) -> ({final_x}, {final_y})")
+            
+            # Verify significant contrast
+            if (is_dark and min_val < mean_val * threshold_factor) or \
+               (not is_dark and max_val > mean_val * threshold_factor):
+                return final_x, final_y
+            else:
+                logger.debug(f"No clear catheter found at ({x}, {y}), using original position")
+                return x, y
+                
+        except Exception as e:
+            logger.error(f"Error in catheter centering: {e}")
+            return x, y
+    
+    def find_vessel_center(self, x: int, y: int, window_size: int = 25) -> Tuple[int, int]:
+        """
+        Find the vessel center near the clicked point using local minimum search.
+        Vessels are dark (low intensity) on bright background.
+        
+        Args:
+            x, y: Initial click coordinates
+            window_size: Size of search window (should be odd)
+        
+        Returns:
+            Centered coordinates (x, y)
+        """
+        try:
+            # Ensure we have a valid frame
+            if self.current_frame is None:
+                return x, y
+            
+            # Get frame dimensions
+            height, width = self.current_frame.shape[:2]
+            
+            # Define search window boundaries
+            half_window = window_size // 2
+            x_min = max(0, x - half_window)
+            x_max = min(width, x + half_window + 1)
+            y_min = max(0, y - half_window)
+            y_max = min(height, y + half_window + 1)
+            
+            # Extract window from grayscale frame
+            if len(self.current_frame.shape) == 3:
+                # Convert to grayscale if needed
+                gray_frame = cv2.cvtColor(self.current_frame, cv2.COLOR_BGR2GRAY)
+            else:
+                gray_frame = self.current_frame
+            
+            window = gray_frame[y_min:y_max, x_min:x_max]
+            
+            # Apply Gaussian blur to reduce noise (sigma based on window size)
+            blur_kernel = (5, 5)
+            blurred = cv2.GaussianBlur(window, blur_kernel, 1.5)
+            
+            # Method 1: Find the darkest point (simple minimum)
+            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(blurred)
+            
+            # Calculate centered coordinates from simple minimum
+            simple_x = x_min + min_loc[0]
+            simple_y = y_min + min_loc[1]
+            
+            # Method 2: Weighted centroid based on darkness
+            # Invert intensities so dark regions have high weights
+            inverted = 255 - blurred
+            
+            # Apply threshold to focus on vessel regions
+            threshold = np.percentile(inverted, 75)  # Top 25% darkest pixels
+            mask = inverted > threshold
+            weighted = inverted * mask
+            
+            # Calculate weighted centroid
+            total_weight = np.sum(weighted)
+            if total_weight > 0:
+                y_coords, x_coords = np.meshgrid(range(window.shape[0]), range(window.shape[1]), indexing='ij')
+                weighted_x = np.sum(x_coords * weighted) / total_weight
+                weighted_y = np.sum(y_coords * weighted) / total_weight
+                
+                # Convert to image coordinates
+                centroid_x = int(x_min + weighted_x)
+                centroid_y = int(y_min + weighted_y)
+                
+                # Choose between simple minimum and weighted centroid
+                # Use weighted centroid if it's close to the simple minimum
+                dist = np.sqrt((simple_x - centroid_x)**2 + (simple_y - centroid_y)**2)
+                if dist < window_size / 4:  # Within quarter of window size
+                    final_x, final_y = centroid_x, centroid_y
+                    logger.debug(f"Using weighted centroid: ({x}, {y}) -> ({final_x}, {final_y})")
+                else:
+                    final_x, final_y = simple_x, simple_y
+                    logger.debug(f"Using simple minimum: ({x}, {y}) -> ({final_x}, {final_y})")
+            else:
+                final_x, final_y = simple_x, simple_y
+                logger.debug(f"Using simple minimum (no valid weights): ({x}, {y}) -> ({final_x}, {final_y})")
+            
+            # Verify the found point is significantly darker than surroundings
+            mean_intensity = np.mean(window)
+            if min_val < mean_intensity * 0.8:  # At least 20% darker than average
+                return final_x, final_y
+            else:
+                logger.debug(f"No clear vessel found at ({x}, {y}), using original position")
+                return x, y
+                
+        except Exception as e:
+            logger.error(f"Error in vessel centering: {e}")
+            return x, y
+    
     def add_point_at_position(self, x: int, y: int):
-        """Add a new point at the given position"""
+        """Add a new point at the given position with vessel centering for tracking mode"""
         if self.current_frame_index not in self.overlay_item.frame_points:
             self.overlay_item.frame_points[self.current_frame_index] = []
 
         # Check if we already have 3 points in current frame
         if len(self.overlay_item.frame_points[self.current_frame_index]) >= 3:
             return
+        
+        # Apply vessel centering if tracking is enabled in VIEW mode
+        if hasattr(self, 'tracking_enabled') and self.tracking_enabled and \
+           hasattr(self, 'mode_manager') and self.mode_manager.is_in_mode(ViewerMode.VIEW):
+            centered_x, centered_y = self.find_vessel_center(x, y)
+            logger.info(f"Vessel centering applied: ({x}, {y}) -> ({centered_x}, {centered_y})")
+            x, y = centered_x, centered_y
 
         self.overlay_item.frame_points[self.current_frame_index].append((x, y))
         self._request_update()
@@ -2753,9 +2972,62 @@ class EnhancedDicomViewer(QGraphicsView):
             self._pending_updates = False
         self._update_timer.stop()
 
+    def _apply_vessel_centering_to_frame(self, frame: np.ndarray, x: int, y: int, 
+                                          window_size: int = 25) -> Tuple[int, int]:
+        """
+        Apply vessel centering to a point in a given frame (thread-safe version).
+        
+        Args:
+            frame: The frame to analyze
+            x, y: Initial point coordinates
+            window_size: Size of search window
+            
+        Returns:
+            Centered coordinates (x, y)
+        """
+        try:
+            # Get frame dimensions
+            height, width = frame.shape[:2]
+            
+            # Define search window boundaries
+            half_window = window_size // 2
+            x_min = max(0, x - half_window)
+            x_max = min(width, x + half_window + 1)
+            y_min = max(0, y - half_window)
+            y_max = min(height, y + half_window + 1)
+            
+            # Extract window from grayscale frame
+            if len(frame.shape) == 3:
+                gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            else:
+                gray_frame = frame
+            
+            window = gray_frame[y_min:y_max, x_min:x_max]
+            
+            # Apply Gaussian blur to reduce noise
+            blurred = cv2.GaussianBlur(window, (5, 5), 1.5)
+            
+            # Find the darkest point (vessel center)
+            min_val, _, min_loc, _ = cv2.minMaxLoc(blurred)
+            
+            # Calculate centered coordinates
+            centered_x = x_min + min_loc[0]
+            centered_y = y_min + min_loc[1]
+            
+            # Verify the found point is significantly darker
+            mean_intensity = np.mean(window)
+            if min_val < mean_intensity * 0.8:
+                return centered_x, centered_y
+            else:
+                return x, y
+                
+        except Exception as e:
+            logger.debug(f"Vessel centering failed: {e}")
+            return x, y
+    
     def _track_points_between_frames(self, prev_frame: np.ndarray, curr_frame: np.ndarray,
                                    points: list) -> list:
-        """Track points between two frames (for use in worker thread)"""
+        """Track points between two frames with vessel centering (for use in worker thread)"""
         # Create a temporary tracker for thread-safe operation
         from ..core.simple_tracker import SimpleTracker
         temp_tracker = SimpleTracker()
@@ -2773,13 +3045,17 @@ class EnhancedDicomViewer(QGraphicsView):
         # Track to next frame
         tracking_results = temp_tracker.track_in_frame(curr_frame)
         
-        # Convert results back to list format
+        # Convert results back to list format with vessel centering
         tracked_points = []
         for i, point in enumerate(points):
             point_id = str(i)
             if point_id in tracking_results:
                 new_pos = tracking_results[point_id]
-                tracked_points.append((new_pos.x, new_pos.y))
+                # Apply vessel centering to tracked point
+                centered_x, centered_y = self._apply_vessel_centering_to_frame(
+                    curr_frame, int(new_pos.x), int(new_pos.y)
+                )
+                tracked_points.append((centered_x, centered_y))
             else:
                 # Keep original position if tracking failed
                 tracked_points.append(point)

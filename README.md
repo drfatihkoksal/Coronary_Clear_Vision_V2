@@ -8,6 +8,8 @@
 
 AI-powered coronary vessel analysis tool with advanced QCA (Quantitative Coronary Analysis) and RWS (Radial Wall Strain) capabilities.
 
+> 🤖 **Bu proje [Claude Code](https://claude.ai/code) yardımıyla geliştirilmiştir** - Anthropic'in AI destekli yazılım geliştirme asistanı
+
 ## 🎬 Demo
 
 [**Watch Demo Video**](https://github.com/drfatihkoksal/Coronary_Clear_Vision_V2/blob/main/demo.mp4) - See the application in action with real-time coronary vessel analysis
@@ -21,9 +23,21 @@ AI-powered coronary vessel analysis tool with advanced QCA (Quantitative Coronar
 
 ## Kurulum
 
-### Gereksinimler
+### Sistem Gereksinimleri
 - Python 3.9+
 - CUDA destekli GPU (opsiyonel, AI modeller için)
+
+### Teknik Gereksinimler
+
+#### Görüntü Kalitesi ve Veri Formatı
+- **Temporal Rezolüsyon**: Optimal analiz doğruluğu için minimum 15 fps (frame/saniye) anjiyografi kayıtları önerilmektedir
+- **Projeksiyon Seçimi**: Foreshortening artefaktının minimize edildiği ortogonal projeksiyonlar tercih edilmelidir (örn: LAO/RAO cranial veya caudal açılar)
+- **EKG Senkronizasyonu**: RWS (Radial Wall Strain) analizi ve kardiyak faz tespiti için DICOM-ECG veya Siemens Curved ECG formatında elektrokardiyografi verisi gerekmektedir
+  - Desteklenen formatlar: DICOM Waveform (0x5400), Siemens Private Tag (0x0019, 0x1030)
+  - EKG verisi olmadan RWS analizi ve kardiyak faz senkronizasyonu gerçekleştirilemez
+
+#### Uyumluluk Notu
+⚠️ **Önemli**: Mevcut versiyon yalnızca **Siemens Artis** anjiyografi sistemlerinden elde edilen DICOM dosyaları ile kapsamlı olarak test edilmiştir. Diğer üreticilerin (GE, Philips, Canon vb.) DICOM formatları ile uyumluluk garanti edilmemektedir.
 
 ### Kurulum Adımları
 ```bash
