@@ -5,6 +5,7 @@
 ![Platform](https://img.shields.io/badge/platform-macOS%20|%20Windows%20|%20Linux-lightgrey.svg)
 ![Medical](https://img.shields.io/badge/medical-Research%20Only-red.svg)
 ![ORCID](https://img.shields.io/badge/ORCID-0000--0002--4197--4683-green.svg)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16883861.svg)](https://doi.org/10.5281/zenodo.16883861)
 
 AI-powered coronary vessel analysis tool with advanced QCA (Quantitative Coronary Analysis) and RWS (Radial Wall Strain) capabilities.
 
@@ -145,12 +146,12 @@ Ticari lisans için lütfen iletişime geçin: [GitHub Issues](https://github.co
 
 Bu yazılımı akademik çalışmalarınızda kullanırsanız, lütfen aşağıdaki şekilde atıf yapınız:
 
-> 💡 **Not**: Bu proje için henüz Zenodo DOI alınmamıştır. Kalıcı DOI için [Zenodo'ya yüklenebilir](https://zenodo.org/).
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.16883861.svg)](https://doi.org/10.5281/zenodo.16883861)
 
 ```
 Köksal, F. (2025). Coronary Clear Vision V2: AI-Powered Coronary Vessel Analysis 
-Tool for Research Applications. GitHub repository: 
-https://github.com/drfatihkoksal/Coronary_Clear_Vision_V2
+Tool for Research Applications. Zenodo. 
+https://doi.org/10.5281/zenodo.16883861
 ORCID: https://orcid.org/0000-0002-4197-4683
 ```
 
@@ -160,7 +161,8 @@ ORCID: https://orcid.org/0000-0002-4197-4683
   author = {Köksal, Fatih},
   title = {Coronary Clear Vision V2: AI-Powered Coronary Vessel Analysis Tool},
   year = {2025},
-  publisher = {GitHub},
+  publisher = {Zenodo},
+  doi = {10.5281/zenodo.16883861},
   url = {https://github.com/drfatihkoksal/Coronary_Clear_Vision_V2},
   note = {ORCID: 0000-0002-4197-4683}
 }
