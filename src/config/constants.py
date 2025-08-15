@@ -8,9 +8,9 @@ APP_VERSION = "1.0.0"
 ORGANIZATION_NAME = "CoronaryClearVision"
 
 # File types
-DICOM_EXTENSIONS = ['.dcm', '.DCM', '.dicom', '.DICOM']
-IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.bmp', '.tiff']
-VIDEO_EXTENSIONS = ['.mp4', '.avi', '.mov']
+DICOM_EXTENSIONS = [".dcm", ".DCM", ".dicom", ".DICOM"]
+IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".bmp", ".tiff"]
+VIDEO_EXTENSIONS = [".mp4", ".avi", ".mov"]
 
 # Default values
 DEFAULT_WINDOW_WIDTH = 1200

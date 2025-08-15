@@ -30,10 +30,13 @@ class CatheterCalibrationStrategy(CalibrationStrategy):
         self.catheter_size_french = catheter_size_french
         self.catheter_diameter_mm = catheter_size_french / 3.0  # 1 French = 1/3 mm
 
-    def calibrate(self, image: np.ndarray,
-                 start_point: Optional[Point] = None,
-                 end_point: Optional[Point] = None,
-                 **kwargs) -> Optional[CalibrationResult]:
+    def calibrate(
+        self,
+        image: np.ndarray,
+        start_point: Optional[Point] = None,
+        end_point: Optional[Point] = None,
+        **kwargs,
+    ) -> Optional[CalibrationResult]:
         """Calibrate using two points marking the catheter diameter."""
         if not self.validate_input(image, start_point=start_point, end_point=end_point):
             return None
@@ -52,13 +55,13 @@ class CatheterCalibrationStrategy(CalibrationStrategy):
             method=self.get_method_name(),
             reference_points=[start_point, end_point],
             reference_diameter_mm=self.catheter_diameter_mm,
-            confidence=0.95  # High confidence for manual catheter measurement
+            confidence=0.95,  # High confidence for manual catheter measurement
         )
 
     def validate_input(self, image: np.ndarray, **kwargs) -> bool:
         """Validate catheter calibration input."""
-        start_point = kwargs.get('start_point')
-        end_point = kwargs.get('end_point')
+        start_point = kwargs.get("start_point")
+        end_point = kwargs.get("end_point")
 
         if start_point is None or end_point is None:
             return False
@@ -94,9 +97,9 @@ class AngioPyCalibrationStrategy(CalibrationStrategy):
             # For now, we'll keep it as a placeholder
             pass
 
-    def calibrate(self, image: np.ndarray,
-                 catheter_size_french: int = 6,
-                 **kwargs) -> Optional[CalibrationResult]:
+    def calibrate(
+        self, image: np.ndarray, catheter_size_french: int = 6, **kwargs
+    ) -> Optional[CalibrationResult]:
         """Automatically detect and calibrate using catheter."""
         if not self.validate_input(image):
             return None
@@ -121,7 +124,7 @@ class AngioPyCalibrationStrategy(CalibrationStrategy):
             method=self.get_method_name(),
             reference_points=catheter_points[:2],  # Use first two points
             reference_diameter_mm=catheter_diameter_mm,
-            confidence=self._calculate_confidence(catheter_points)
+            confidence=self._calculate_confidence(catheter_points),
         )
 
     def _detect_catheter(self, image: np.ndarray) -> List[Point]:
@@ -161,15 +164,18 @@ class AngioPyCalibrationStrategy(CalibrationStrategy):
 class ManualCalibrationStrategy(CalibrationStrategy):
     """Manual calibration with known distance."""
 
-    def calibrate(self, image: np.ndarray,
-                 start_point: Point,
-                 end_point: Point,
-                 known_distance_mm: float,
-                 **kwargs) -> Optional[CalibrationResult]:
+    def calibrate(
+        self,
+        image: np.ndarray,
+        start_point: Point,
+        end_point: Point,
+        known_distance_mm: float,
+        **kwargs,
+    ) -> Optional[CalibrationResult]:
         """Calibrate using two points with known distance."""
-        if not self.validate_input(image, start_point=start_point,
-                                 end_point=end_point,
-                                 known_distance_mm=known_distance_mm):
+        if not self.validate_input(
+            image, start_point=start_point, end_point=end_point, known_distance_mm=known_distance_mm
+        ):
             return None
 
         pixel_distance = start_point.distance_to(end_point)
@@ -184,14 +190,14 @@ class ManualCalibrationStrategy(CalibrationStrategy):
             method=self.get_method_name(),
             reference_points=[start_point, end_point],
             reference_diameter_mm=known_distance_mm,
-            confidence=0.9  # Slightly lower than catheter due to manual measurement
+            confidence=0.9,  # Slightly lower than catheter due to manual measurement
         )
 
     def validate_input(self, image: np.ndarray, **kwargs) -> bool:
         """Validate manual calibration input."""
-        start_point = kwargs.get('start_point')
-        end_point = kwargs.get('end_point')
-        known_distance = kwargs.get('known_distance_mm', 0)
+        start_point = kwargs.get("start_point")
+        end_point = kwargs.get("end_point")
+        known_distance = kwargs.get("known_distance_mm", 0)
 
         if start_point is None or end_point is None:
             return False
@@ -219,15 +225,17 @@ class CalibrationService:
         self._current_result: Optional[CalibrationResult] = None
 
         # Register default strategies
-        self.register_strategy('catheter', CatheterCalibrationStrategy())
-        self.register_strategy('angiopy', AngioPyCalibrationStrategy())
-        self.register_strategy('manual', ManualCalibrationStrategy())
+        self.register_strategy("catheter", CatheterCalibrationStrategy())
+        self.register_strategy("angiopy", AngioPyCalibrationStrategy())
+        self.register_strategy("manual", ManualCalibrationStrategy())
 
     def register_strategy(self, name: str, strategy: CalibrationStrategy):
         """Register a new calibration strategy."""
         self._strategies[name] = strategy
 
-    def calibrate(self, strategy_name: str, image: np.ndarray, **kwargs) -> Optional[CalibrationResult]:
+    def calibrate(
+        self, strategy_name: str, image: np.ndarray, **kwargs
+    ) -> Optional[CalibrationResult]:
         """Perform calibration using the specified strategy."""
         if strategy_name not in self._strategies:
             raise ValueError(f"Unknown calibration strategy: {strategy_name}")

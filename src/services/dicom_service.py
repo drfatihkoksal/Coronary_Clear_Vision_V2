@@ -41,22 +41,19 @@ class DicomService:
 
             # Get basic info
             info = {
-                'success': True,
-                'file_path': file_path,
-                'num_frames': self.get_frame_count(),
-                'dimensions': self.get_dimensions(),
-                'pixel_spacing': self.get_pixel_spacing(),
-                'modality': self.get_modality(),
-                'has_ekg': self.has_ekg_data()
+                "success": True,
+                "file_path": file_path,
+                "num_frames": self.get_frame_count(),
+                "dimensions": self.get_dimensions(),
+                "pixel_spacing": self.get_pixel_spacing(),
+                "modality": self.get_modality(),
+                "has_ekg": self.has_ekg_data(),
             }
 
             return info
 
         except Exception as e:
-            return {
-                'success': False,
-                'error': str(e)
-            }
+            return {"success": False, "error": str(e)}
 
     def get_frame(self, index: int) -> Optional[np.ndarray]:
         """Get a specific frame."""
@@ -128,10 +125,10 @@ class DicomService:
         info = {}
 
         if self.dicom_parser:
-            info['patient_name'] = self.get_metadata('PatientName')
-            info['patient_id'] = self.get_metadata('PatientID')
-            info['patient_birth_date'] = self.get_metadata('PatientBirthDate')
-            info['patient_sex'] = self.get_metadata('PatientSex')
+            info["patient_name"] = self.get_metadata("PatientName")
+            info["patient_id"] = self.get_metadata("PatientID")
+            info["patient_birth_date"] = self.get_metadata("PatientBirthDate")
+            info["patient_sex"] = self.get_metadata("PatientSex")
 
         return info
 
@@ -140,14 +137,14 @@ class DicomService:
         info = {}
 
         if self.dicom_parser:
-            info['study_date'] = self.get_metadata('StudyDate')
-            info['study_time'] = self.get_metadata('StudyTime')
-            info['study_description'] = self.get_metadata('StudyDescription')
-            info['accession_number'] = self.get_metadata('AccessionNumber')
+            info["study_date"] = self.get_metadata("StudyDate")
+            info["study_time"] = self.get_metadata("StudyTime")
+            info["study_description"] = self.get_metadata("StudyDescription")
+            info["accession_number"] = self.get_metadata("AccessionNumber")
 
         return info
 
-    def export_frame(self, frame_index: int, output_path: str, format: str = 'png') -> bool:
+    def export_frame(self, frame_index: int, output_path: str, format: str = "png") -> bool:
         """
         Export a frame to image file.
 
@@ -165,9 +162,7 @@ class DicomService:
                 return False
 
             # Normalize to 8-bit
-            frame_normalized = cv2.normalize(
-                frame, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U
-            )
+            frame_normalized = cv2.normalize(frame, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
 
             # Save image
             cv2.imwrite(output_path, frame_normalized)
@@ -195,7 +190,7 @@ class DicomService:
             height, width = self.get_dimensions()
 
             # Create video writer
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
             out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
             # Write frames
@@ -203,9 +198,7 @@ class DicomService:
                 frame = self.get_frame(i)
                 if frame is not None:
                     # Convert to 8-bit RGB
-                    frame_8bit = cv2.normalize(
-                        frame, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U
-                    )
+                    frame_8bit = cv2.normalize(frame, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
                     frame_rgb = cv2.cvtColor(frame_8bit, cv2.COLOR_GRAY2RGB)
                     out.write(frame_rgb)
 

@@ -76,23 +76,23 @@ class EKGParser:
     def _extract_waveform_sequence(self, ds) -> bool:
         """Extract from modern waveform sequence (5400,0100)"""
         try:
-            if hasattr(ds, 'WaveformSequence') and len(ds.WaveformSequence) > 0:
+            if hasattr(ds, "WaveformSequence") and len(ds.WaveformSequence) > 0:
                 waveform = ds.WaveformSequence[0]
 
                 # Get sampling frequency
-                if hasattr(waveform, 'SamplingFrequency'):
+                if hasattr(waveform, "SamplingFrequency"):
                     self.sampling_rate = float(waveform.SamplingFrequency)
 
                 # Get number of samples
-                if hasattr(waveform, 'NumberOfWaveformSamples'):
+                if hasattr(waveform, "NumberOfWaveformSamples"):
                     self.num_samples = int(waveform.NumberOfWaveformSamples)
 
                 # Get waveform data
-                if hasattr(waveform, 'WaveformData'):
+                if hasattr(waveform, "WaveformData"):
                     raw_data = waveform.WaveformData
 
                     # Determine data type
-                    if hasattr(waveform, 'WaveformBitsAllocated'):
+                    if hasattr(waveform, "WaveformBitsAllocated"):
                         bits = int(waveform.WaveformBitsAllocated)
                         if bits == 16:
                             self.ekg_data = np.frombuffer(raw_data, dtype=np.int16)
@@ -106,7 +106,7 @@ class EKGParser:
                     # Normalize to millivolts if needed
                     self._normalize_ekg_data(waveform)
 
-                    self.metadata['source'] = 'WaveformSequence'
+                    self.metadata["source"] = "WaveformSequence"
                     return True
 
         except (AttributeError, KeyError, ValueError):
@@ -123,7 +123,6 @@ class EKGParser:
                 curve_data_tag = Tag(group, 0x3000)
                 curve_dimensions_tag = Tag(group, 0x0005)
                 curve_samples_tag = Tag(group, 0x0010)
-
 
                 if curve_data_tag in ds:
                     # Get curve dimensions (can be 1 or 2 for ECG)
@@ -147,12 +146,12 @@ class EKGParser:
 
                     if curve_type_tag in ds:
                         curve_type = str(ds[curve_type_tag].value).upper()
-                        if 'ECG' in curve_type or 'EKG' in curve_type:
+                        if "ECG" in curve_type or "EKG" in curve_type:
                             is_ecg = True
 
                     if curve_label_tag in ds and not is_ecg:
                         label = str(ds[curve_label_tag].value).lower()
-                        if 'ecg' in label or 'ekg' in label:
+                        if "ecg" in label or "ekg" in label:
                             is_ecg = True
 
                     # If no clear ECG indicator but we have curve data, assume it's ECG
@@ -193,18 +192,17 @@ class EKGParser:
 
                     # Calculate sampling rate based on video duration
                     # Get frame rate and number of frames
-                    fps = float(ds.get('CineRate', 15))
-                    num_frames = int(ds.get('NumberOfFrames', 1))
+                    fps = float(ds.get("CineRate", 15))
+                    num_frames = int(ds.get("NumberOfFrames", 1))
                     video_duration = num_frames / fps
 
                     # EKG samples cover the entire video duration
                     self.sampling_rate = self.num_samples / video_duration
 
-
                     # Store metadata
-                    self.metadata['source'] = f'LegacyCurve_{group:04X}'
+                    self.metadata["source"] = f"LegacyCurve_{group:04X}"
                     if curve_label_tag in ds:
-                        self.metadata['label'] = str(ds[curve_label_tag].value)
+                        self.metadata["label"] = str(ds[curve_label_tag].value)
 
                     # Process the data
                     self._process_siemens_ecg_data()
@@ -234,7 +232,7 @@ class EKGParser:
                     # Siemens usually uses 1000Hz sampling
                     self.sampling_rate = 1000.0
 
-                    self.metadata['source'] = 'SiemensPrivate'
+                    self.metadata["source"] = "SiemensPrivate"
                     return True
 
         except (AttributeError, KeyError, ValueError):
@@ -262,7 +260,7 @@ class EKGParser:
                     # GE typically uses 500Hz or 1000Hz
                     self.sampling_rate = 500.0  # Conservative estimate
 
-                    self.metadata['source'] = 'GEPrivate'
+                    self.metadata["source"] = "GEPrivate"
                     return True
 
         except (AttributeError, KeyError, ValueError):
@@ -277,10 +275,10 @@ class EKGParser:
 
         # If we have waveform metadata, use it for proper scaling
         if waveform_item is not None:
-            if hasattr(waveform_item, 'ChannelSensitivity'):
+            if hasattr(waveform_item, "ChannelSensitivity"):
                 sensitivity = float(waveform_item.ChannelSensitivity)
                 self.ekg_data = self.ekg_data * sensitivity
-            elif hasattr(waveform_item, 'ChannelSensitivityCorrectionFactor'):
+            elif hasattr(waveform_item, "ChannelSensitivityCorrectionFactor"):
                 factor = float(waveform_item.ChannelSensitivityCorrectionFactor)
                 self.ekg_data = self.ekg_data * factor
         else:
@@ -312,15 +310,16 @@ class EKGParser:
         # Apply smoothing if needed
         if len(self.ekg_data) > 10:
             from scipy.ndimage import uniform_filter1d
+
             # Light smoothing to reduce noise
             self.ekg_data = uniform_filter1d(self.ekg_data, size=3)
 
     def _estimate_sampling_rate(self, ds):
         """Estimate sampling rate from DICOM metadata"""
         # Try to get from frame time
-        if hasattr(ds, 'FrameTime'):
+        if hasattr(ds, "FrameTime"):
             frame_time_ms = float(ds.FrameTime)
-            if hasattr(ds, 'NumberOfFrames'):
+            if hasattr(ds, "NumberOfFrames"):
                 num_frames = int(ds.NumberOfFrames)
                 total_duration = (frame_time_ms * num_frames) / 1000.0  # seconds
                 if self.num_samples > 0 and total_duration > 0:
@@ -350,7 +349,7 @@ class EKGParser:
             # Check signal quality
             quality = self.processor.detect_signal_quality(processed_signal)
 
-            if not quality['is_good']:
+            if not quality["is_good"]:
                 pass
 
             # Detect R-peaks
@@ -358,13 +357,12 @@ class EKGParser:
 
             # Store quality metrics
             self.quality_metrics = {
-                'quality_score': 0.8 if metrics['quality'] == 'good' else 0.5,
-                'message': f"Simple detection ({metrics['quality']} quality)",
-                'mean_hr': metrics['heart_rate'],
-                'num_peaks': metrics['num_peaks'],
-                'signal_quality': quality
+                "quality_score": 0.8 if metrics["quality"] == "good" else 0.5,
+                "message": f"Simple detection ({metrics['quality']} quality)",
+                "mean_hr": metrics["heart_rate"],
+                "num_peaks": metrics["num_peaks"],
+                "signal_quality": quality,
             }
-
 
             return r_peaks
 
@@ -389,17 +387,17 @@ class EKGParser:
             high = min(15 / nyquist, 0.99)
 
             if low < high:
-                b, a = signal.butter(2, [low, high], btype='band')
+                b, a = signal.butter(2, [low, high], btype="band")
                 filtered = signal.filtfilt(b, a, self.ekg_data)
             else:
                 filtered = self.ekg_data
 
             # Square the signal
-            squared = filtered ** 2
+            squared = filtered**2
 
             # Moving average
             window_size = int(0.15 * self.sampling_rate)
-            ma = np.convolve(squared, np.ones(window_size)/window_size, mode='same')
+            ma = np.convolve(squared, np.ones(window_size) / window_size, mode="same")
 
             # Find peaks
             threshold = 0.35 * np.max(ma)
@@ -449,10 +447,10 @@ class EKGParser:
         rr_intervals = np.diff(r_peaks) / self.sampling_rate * 1000  # in ms
 
         return {
-            'mean_rr': np.mean(rr_intervals),
-            'std_rr': np.std(rr_intervals),
-            'rmssd': np.sqrt(np.mean(np.diff(rr_intervals) ** 2)),
-            'pnn50': np.sum(np.abs(np.diff(rr_intervals)) > 50) / len(rr_intervals) * 100
+            "mean_rr": np.mean(rr_intervals),
+            "std_rr": np.std(rr_intervals),
+            "rmssd": np.sqrt(np.mean(np.diff(rr_intervals) ** 2)),
+            "pnn50": np.sum(np.abs(np.diff(rr_intervals)) > 50) / len(rr_intervals) * 100,
         }
 
     def get_signal_quality(self) -> Dict:
@@ -494,8 +492,8 @@ class EKGParser:
         # Detect phases
         self.cardiac_phases = self.phase_detector.detect_phases(self.ekg_data, r_peaks)
 
-        if self.cardiac_phases and 'statistics' in self.cardiac_phases:
-            self.cardiac_phases['statistics']
+        if self.cardiac_phases and "statistics" in self.cardiac_phases:
+            self.cardiac_phases["statistics"]
 
         return self.cardiac_phases
 
@@ -508,9 +506,6 @@ class EKGParser:
         if self.cardiac_phases is None:
             self.detect_cardiac_phases()
 
-        if self.cardiac_phases and 'phases' in self.cardiac_phases:
-            return self.phase_detector.get_phase_at_time(
-                self.cardiac_phases['phases'],
-                time_s
-            )
+        if self.cardiac_phases and "phases" in self.cardiac_phases:
+            return self.phase_detector.get_phase_at_time(self.cardiac_phases["phases"], time_s)
         return None

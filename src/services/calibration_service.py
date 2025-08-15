@@ -15,11 +15,13 @@ class CalibrationService:
     def __init__(self):
         self.model_manager = ModelManager.instance()
 
-    def calibrate_with_catheter(self,
-                               image: np.ndarray,
-                               user_points: List[Tuple[int, int]],
-                               catheter_size: float,
-                               output_threshold: float = 0.5) -> Dict:
+    def calibrate_with_catheter(
+        self,
+        image: np.ndarray,
+        user_points: List[Tuple[int, int]],
+        catheter_size: float,
+        output_threshold: float = 0.5,
+    ) -> Dict:
         """
         Perform catheter-based calibration.
 
@@ -38,9 +40,7 @@ class CalibrationService:
 
             # Perform catheter segmentation
             catheter_mask, confidence = segmentation_model.segment_catheter(
-                image,
-                user_points,
-                output_threshold=output_threshold
+                image, user_points, output_threshold=output_threshold
             )
 
             if catheter_mask is None:
@@ -56,19 +56,16 @@ class CalibrationService:
             calibration_factor = catheter_size / catheter_diameter_px
 
             return {
-                'success': True,
-                'calibration_factor': calibration_factor,
-                'catheter_diameter_px': catheter_diameter_px,
-                'catheter_mask': catheter_mask,
-                'confidence': confidence,
-                'catheter_size_mm': catheter_size
+                "success": True,
+                "calibration_factor": calibration_factor,
+                "catheter_diameter_px": catheter_diameter_px,
+                "catheter_mask": catheter_mask,
+                "confidence": confidence,
+                "catheter_size_mm": catheter_size,
             }
 
         except Exception as e:
-            return {
-                'success': False,
-                'error': str(e)
-            }
+            return {"success": False, "error": str(e)}
 
     def _calculate_catheter_diameter(self, mask: np.ndarray) -> float:
         """
@@ -81,16 +78,16 @@ class CalibrationService:
             Diameter in pixels with sub-pixel precision
         """
         # Use sub-pixel precision catheter diameter calculation
-        diameter = subpixel_catheter_diameter(mask, method='moments')
-        
+        diameter = subpixel_catheter_diameter(mask, method="moments")
+
         if diameter == 0.0:
             # Fallback to gradient method if moments fail
-            diameter = subpixel_catheter_diameter(mask, method='gradient')
-        
+            diameter = subpixel_catheter_diameter(mask, method="gradient")
+
         if diameter == 0.0:
             # Final fallback to contour method
-            diameter = subpixel_catheter_diameter(mask, method='contours')
-        
+            diameter = subpixel_catheter_diameter(mask, method="contours")
+
         return diameter
 
     def validate_calibration(self, calibration_factor: float) -> bool:
@@ -107,9 +104,7 @@ class CalibrationService:
         # are between 0.1 and 0.5 mm/pixel
         return 0.05 <= calibration_factor <= 1.0
 
-    def apply_calibration(self,
-                         measurement_px: float,
-                         calibration_factor: float) -> float:
+    def apply_calibration(self, measurement_px: float, calibration_factor: float) -> float:
         """
         Apply calibration to convert pixels to mm.
 

@@ -60,14 +60,12 @@ class ModelManager:
                         logger.info("Lazy loading AngioPy model on first use...")
                     else:
                         logger.info("Loading AngioPy model...")
-                    
+
                     # Create model instance
-                    self._segmentation_model = AngioPySegmentation(
-                        auto_download=auto_download
-                    )
+                    self._segmentation_model = AngioPySegmentation(auto_download=auto_download)
                     self._model_loaded = True
                     logger.info("AngioPy model loaded successfully")
-        
+
         # Wait for preloading to complete if in progress
         # But don't try to join if we're the loading thread itself
         if self._loading_thread and self._loading_thread.is_alive():
@@ -75,7 +73,7 @@ class ModelManager:
             if current_thread != self._loading_thread:
                 logger.debug("Waiting for model preloading to complete...")
                 self._loading_thread.join()
-            
+
         return self._segmentation_model
 
     def reset_model(self):
@@ -83,9 +81,12 @@ class ModelManager:
         with self._model_lock:
             self._segmentation_model = None
             self._model_loaded = False
-    
-    def preload_model_async(self, auto_download: bool = True, 
-                           progress_callback: Optional[Callable[[str, int], None]] = None):
+
+    def preload_model_async(
+        self,
+        auto_download: bool = True,
+        progress_callback: Optional[Callable[[str, int], None]] = None,
+    ):
         """
         Preload the model asynchronously in background.
         Only preloads if lazy loading is disabled or explicitly requested.
@@ -94,75 +95,81 @@ class ModelManager:
         if self._load_on_demand and not self._preload_requested:
             logger.debug("Lazy loading enabled - skipping model preload")
             return
-        
+
         def _load_model():
             try:
                 # Create model instance
                 model = self.get_segmentation_model(auto_download)
-                
+
                 # Check if model needs to be downloaded
-                if model and hasattr(model, 'model_downloader'):
+                if model and hasattr(model, "model_downloader"):
                     cached_path = model.model_downloader.get_model_path()
                     if not cached_path:
                         if progress_callback:
                             progress_callback("Downloading AngioPy model...", 0)
-                        
+
                         # Download model with progress
                         def download_progress(current, total):
                             if total > 0:
                                 percent = int((current / total) * 100)
                                 if progress_callback:
                                     progress_callback(f"Downloading model: {percent}%", percent)
-                        
-                        downloaded_path = model.model_downloader.download_model(progress_callback=download_progress)
+
+                        downloaded_path = model.model_downloader.download_model(
+                            progress_callback=download_progress
+                        )
                         if downloaded_path:
                             if progress_callback:
                                 progress_callback("Model downloaded successfully", 100)
-                
+
                 # Force model loading
                 if model:
                     if progress_callback:
                         progress_callback("Loading model into memory...", 95)
-                    
+
                     # Ensure model is loaded
-                    if hasattr(model, 'load_model'):
+                    if hasattr(model, "load_model"):
                         if not model.model_loaded:
                             # Get the model path
-                            if hasattr(model, 'model_downloader'):
+                            if hasattr(model, "model_downloader"):
                                 model_path = model.model_downloader.get_model_path()
                                 if model_path:
                                     model.load_model(model_path)
-                    
+
                     # Do a dummy forward pass to ensure model is fully loaded
-                    if hasattr(model, 'model') and model.model is not None:
+                    if hasattr(model, "model") and model.model is not None:
                         try:
                             import torch
+
                             dummy_input = torch.zeros(1, 3, 512, 512).to(model.device)
                             with torch.no_grad():
                                 _ = model.model(dummy_input)
                         except:
                             pass
-                    
+
                     self._model_loaded = True
                     if progress_callback:
                         progress_callback("Model ready", 100)
-                        
+
             except Exception as e:
                 import logging
                 import traceback
+
                 logging.error(f"Error preloading model: {e}")
                 traceback.print_exc()
                 if progress_callback:
                     progress_callback(f"Error loading model: {str(e)}", -1)
-        
-        if not self._model_loaded and (not self._loading_thread or not self._loading_thread.is_alive()):
+
+        if not self._model_loaded and (
+            not self._loading_thread or not self._loading_thread.is_alive()
+        ):
             self._loading_thread = threading.Thread(target=_load_model, daemon=True)
             self._loading_thread.start()
-    
+
     def is_model_loaded(self) -> bool:
         """Check if model is fully loaded and ready."""
         return self._model_loaded and self._segmentation_model is not None
-    
+
     def request_preload(self):
         """
         Request model preloading even if lazy loading is enabled.
@@ -170,7 +177,7 @@ class ModelManager:
         """
         self._preload_requested = True
         self.preload_model_async()
-    
+
     def unload_model(self):
         """
         Unload the model from memory to free resources.
@@ -178,46 +185,45 @@ class ModelManager:
         """
         if not self._load_on_demand:
             logger.warning("Unloading model while lazy loading is disabled")
-        
+
         with self._model_lock:
             if self._segmentation_model is not None:
                 # Clear PyTorch cache if available
                 try:
                     import torch
+
                     if torch.cuda.is_available():
                         torch.cuda.empty_cache()
                 except ImportError:
                     pass
-                
+
                 self._segmentation_model = None
                 self._model_loaded = False
                 self._model_cache.clear()
                 logger.info("Model unloaded from memory")
-    
+
     def get_memory_usage(self) -> Dict[str, float]:
         """
         Get estimated memory usage of loaded models.
-        
+
         Returns:
             Dict with memory usage in MB
         """
-        usage = {
-            'model_loaded': self.is_model_loaded(),
-            'estimated_mb': 0.0
-        }
-        
+        usage = {"model_loaded": self.is_model_loaded(), "estimated_mb": 0.0}
+
         if self._segmentation_model is not None:
             # Rough estimate: 200-500 MB for typical segmentation model
-            usage['estimated_mb'] = 350.0  # Conservative estimate
-            
+            usage["estimated_mb"] = 350.0  # Conservative estimate
+
             try:
                 import torch
+
                 if torch.cuda.is_available():
-                    usage['gpu_allocated_mb'] = torch.cuda.memory_allocated() / 1024 / 1024
-                    usage['gpu_reserved_mb'] = torch.cuda.memory_reserved() / 1024 / 1024
+                    usage["gpu_allocated_mb"] = torch.cuda.memory_allocated() / 1024 / 1024
+                    usage["gpu_reserved_mb"] = torch.cuda.memory_reserved() / 1024 / 1024
             except ImportError:
                 pass
-        
+
         return usage
 
     @classmethod

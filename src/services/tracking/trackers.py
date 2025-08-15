@@ -20,86 +20,86 @@ logger = logging.getLogger(__name__)
 class BaseTracker(ABC):
     """
     İzleyici base class.
-    
+
     Ortak fonksiyonalite ve yardımcı metodlar.
     """
-    
-    def __init__(self, template_size: int = 21, search_radius: int = 30):
+
+    def __init__(self, template_size: int = 21, search_radius: int = 30, fps: float = 30.0):
         """
         BaseTracker constructor.
-        
+
         Args:
             template_size: Şablon pencere boyutu (tek sayı)
             search_radius: Arama yarıçapı
+            fps: Video frame rate (adaptive search için)
         """
         # Tek sayı olmalı
         if template_size % 2 == 0:
             template_size += 1
-            
+
         self.template_size = template_size
         self.search_radius = search_radius
+        self.fps = fps
         self.template = None
         self.last_position = None
         self.confidence_history = []
-        
+        self.velocity_history = []  # Hız geçmişi
+        self.position_history = []  # Pozisyon geçmişi
+
     @property
     @abstractmethod
     def method_name(self) -> str:
         """İzleme yöntemi adı"""
-        pass
-    
-    def _extract_template(self, 
-                         image: np.ndarray, 
-                         center: Point2D,
-                         size: int) -> Optional[np.ndarray]:
+
+    def _extract_template(
+        self, image: np.ndarray, center: Point2D, size: int
+    ) -> Optional[np.ndarray]:
         """
         Görüntüden şablon çıkar.
-        
+
         Args:
             image: Kaynak görüntü
             center: Merkez nokta
             size: Şablon boyutu
-            
+
         Returns:
             Optional[np.ndarray]: Şablon veya None
         """
         half_size = size // 2
-        
+
         # Sınırları kontrol et
         x1 = int(center.x - half_size)
         y1 = int(center.y - half_size)
         x2 = int(center.x + half_size + 1)
         y2 = int(center.y + half_size + 1)
-        
+
         # Görüntü sınırları içinde mi?
-        if (x1 < 0 or y1 < 0 or 
-            x2 > image.shape[1] or y2 > image.shape[0]):
+        if x1 < 0 or y1 < 0 or x2 > image.shape[1] or y2 > image.shape[0]:
             logger.warning(f"Template extraction out of bounds: ({x1},{y1}) to ({x2},{y2})")
             return None
-        
+
         # Şablonu çıkar
         template = image[y1:y2, x1:x2].copy()
-        
+
         return template
-    
-    def _get_search_region(self,
-                          image: np.ndarray,
-                          center: Point2D,
-                          region: Optional[Tuple[int, int, int, int]] = None) -> Tuple[np.ndarray, int, int]:
+
+    def _get_search_region(
+        self, image: np.ndarray, center: Point2D, region: Optional[Tuple[int, int, int, int]] = None
+    ) -> Tuple[np.ndarray, int, int]:
         """
         Arama bölgesini al.
-        
+
         Args:
             image: Kaynak görüntü
             center: Merkez nokta
             region: Özel arama bölgesi (x, y, w, h)
-            
+
         Returns:
             Tuple: (bölge_görüntüsü, offset_x, offset_y)
         """
         if region:
             x, y, w, h = region
-            search_region = image[y:y+h, x:x+w]
+            search_region = image[y : y + h, x : x + w]
             return search_region, x, y
         else:
             # Varsayılan arama bölgesi
@@ -107,45 +107,44 @@ class BaseTracker(ABC):
             y1 = max(0, int(center.y - self.search_radius))
             x2 = min(image.shape[1], int(center.x + self.search_radius))
             y2 = min(image.shape[0], int(center.y + self.search_radius))
-            
+
             search_region = image[y1:y2, x1:x2]
             return search_region, x1, y1
-    
-    def _refine_position(self,
-                        image: np.ndarray,
-                        position: Point2D,
-                        window_size: int = 5) -> Point2D:
+
+    def _refine_position(
+        self, image: np.ndarray, position: Point2D, window_size: int = 5
+    ) -> Point2D:
         """
         Sub-piksel hassasiyetinde pozisyon iyileştirme.
-        
+
         Args:
             image: Görüntü (genellikle korelasyon haritası)
             position: İlk pozisyon
             window_size: İyileştirme pencere boyutu
-            
+
         Returns:
             Point2D: İyileştirilmiş pozisyon
         """
         x, y = int(position.x), int(position.y)
         half_win = window_size // 2
-        
+
         # Pencere sınırlarını kontrol et
         x1 = max(half_win, x - half_win)
         y1 = max(half_win, y - half_win)
         x2 = min(image.shape[1] - half_win, x + half_win)
         y2 = min(image.shape[0] - half_win, y + half_win)
-        
+
         # Pencere içinde ağırlık merkezi hesapla
-        window = image[y1:y2+1, x1:x2+1].astype(np.float32)
-        
+        window = image[y1 : y2 + 1, x1 : x2 + 1].astype(np.float32)
+
         # Ağırlıkları normalize et
         window = window - window.min()
         if window.max() > 0:
             window = window / window.max()
-        
+
         # Koordinat grid'leri
-        yy, xx = np.mgrid[y1:y2+1, x1:x2+1]
-        
+        yy, xx = np.mgrid[y1 : y2 + 1, x1 : x2 + 1]
+
         # Ağırlıklı ortalama
         total_weight = np.sum(window)
         if total_weight > 0:
@@ -154,49 +153,112 @@ class BaseTracker(ABC):
             return Point2D(refined_x, refined_y)
         else:
             return position
+    
+    def _calculate_adaptive_search_radius(self) -> int:
+        """
+        FPS ve hareket hızına göre adaptif arama yarıçapı hesapla.
+        
+        Returns:
+            int: Adaptif arama yarıçapı
+        """
+        base_radius = self.search_radius
+        
+        # FPS kompanzasyonu - düşük FPS için daha geniş arama
+        fps_multiplier = max(1.0, 30.0 / max(self.fps, 10.0))  # 15 FPS için 2x
+        
+        # Hız bazlı genişletme
+        if len(self.velocity_history) >= 2:
+            recent_velocities = self.velocity_history[-3:]
+            max_velocity = max(recent_velocities) if recent_velocities else 0
+            
+            # Frame interval (saniye)
+            frame_interval = 1.0 / max(self.fps, 1.0)
+            
+            # Tahmini yer değişimi
+            predicted_displacement = max_velocity * frame_interval * 60
+            
+            # Hız bazlı ek radius
+            velocity_addon = int(predicted_displacement * 1.5)
+            
+            # Toplam adaptif radius (max 100px)
+            adaptive_radius = min(int(base_radius * fps_multiplier) + velocity_addon, 100)
+        else:
+            # Hız bilgisi yoksa sadece FPS kompanzasyonu
+            adaptive_radius = min(int(base_radius * fps_multiplier), 80)
+        
+        return adaptive_radius
+    
+    def _update_motion_history(self, new_position: Point2D):
+        """
+        Hareket geçmişini güncelle.
+        
+        Args:
+            new_position: Yeni pozisyon
+        """
+        # Pozisyon geçmişini güncelle
+        self.position_history.append(new_position)
+        if len(self.position_history) > 10:
+            self.position_history.pop(0)
+        
+        # Hız hesapla ve güncelle
+        if self.last_position is not None:
+            velocity = np.sqrt(
+                (new_position.x - self.last_position.x) ** 2 + 
+                (new_position.y - self.last_position.y) ** 2
+            )
+            self.velocity_history.append(velocity)
+            if len(self.velocity_history) > 10:
+                self.velocity_history.pop(0)
 
 
 class TemplateMatchingTracker(BaseTracker, ITracker):
     """
     Şablon eşleme tabanlı izleyici.
-    
+
     OpenCV template matching kullanarak izleme yapar.
     Hızlı ve güvenilir, ancak rotasyon/ölçek değişimlerine duyarlı.
     """
-    
-    def __init__(self, 
-                 template_size: int = 21,
-                 search_radius: int = 30,
-                 matching_method: int = cv2.TM_CCOEFF_NORMED):
+
+    def __init__(
+        self,
+        template_size: int = 21,
+        search_radius: int = 30,
+        matching_method: int = cv2.TM_CCOEFF_NORMED,
+        fps: float = 30.0,
+        use_pyramid: bool = True,
+        pyramid_levels: int = 3,
+    ):
         """
         TemplateMatchingTracker constructor.
-        
+
         Args:
             template_size: Şablon boyutu
             search_radius: Arama yarıçapı
             matching_method: OpenCV eşleme yöntemi
+            fps: Video frame rate
+            use_pyramid: Pyramid tracking kullan
+            pyramid_levels: Pyramid seviyeleri
         """
-        super().__init__(template_size, search_radius)
+        super().__init__(template_size, search_radius, fps)
         self.matching_method = matching_method
-        self.min_correlation = 0.5  # Minimum kabul edilebilir korelasyon
-        
+        self.min_correlation = 0.4 if fps < 20 else 0.5  # Düşük FPS için daha toleranslı
+        self.use_pyramid = use_pyramid
+        self.pyramid_levels = pyramid_levels
+
     @property
     def method_name(self) -> str:
         """İzleme yöntemi adı"""
         return "Template Matching"
-    
-    def initialize(self, 
-                  image: np.ndarray, 
-                  point: Point2D,
-                  template_size: int) -> bool:
+
+    def initialize(self, image: np.ndarray, point: Point2D, template_size: int) -> bool:
         """
         İzleyiciyi başlat.
-        
+
         Args:
             image: Başlangıç görüntüsü
             point: İzlenecek nokta
             template_size: Şablon boyutu
-            
+
         Returns:
             bool: Başarılı mı?
         """
@@ -206,37 +268,39 @@ class TemplateMatchingTracker(BaseTracker, ITracker):
                 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             else:
                 gray = image.copy()
-            
+
             # Şablonu çıkar
             self.template_size = template_size
             self.template = self._extract_template(gray, point, template_size)
-            
+
             if self.template is None:
                 logger.error("Failed to extract template")
                 return False
-            
+
             self.last_position = point
             self.confidence_history = [1.0]  # İlk güven %100
-            
-            logger.debug(f"Template initialized at ({point.x:.1f}, {point.y:.1f}), "
-                        f"size: {self.template.shape}")
-            
+
+            logger.debug(
+                f"Template initialized at ({point.x:.1f}, {point.y:.1f}), "
+                f"size: {self.template.shape}"
+            )
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Template initialization error: {str(e)}")
             return False
-    
-    def track(self, 
-             image: np.ndarray,
-             search_region: Optional[Tuple[int, int, int, int]] = None) -> Tuple[bool, Point2D, float]:
+
+    def track(
+        self, image: np.ndarray, search_region: Optional[Tuple[int, int, int, int]] = None
+    ) -> Tuple[bool, Point2D, float]:
         """
         Noktayı yeni frame'de izle.
-        
+
         Args:
             image: Yeni frame
             search_region: Arama bölgesi (x, y, width, height)
-            
+
         Returns:
             Tuple: (başarılı, yeni_pozisyon, güven_skoru)
         """
@@ -244,82 +308,190 @@ class TemplateMatchingTracker(BaseTracker, ITracker):
             if self.template is None or self.last_position is None:
                 logger.error("Tracker not initialized")
                 return False, Point2D(0, 0), 0.0
-            
+
             # Gri tonlamaya çevir
             if len(image.shape) == 3:
                 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             else:
                 gray = image.copy()
+
+            # Adaptif arama yarıçapı kullan
+            adaptive_radius = self._calculate_adaptive_search_radius()
             
-            # Arama bölgesini al
-            search_img, offset_x, offset_y = self._get_search_region(
-                gray, self.last_position, search_region
-            )
-            
-            # Arama bölgesi çok küçükse
-            if (search_img.shape[0] < self.template.shape[0] or 
-                search_img.shape[1] < self.template.shape[1]):
-                logger.warning("Search region too small for template")
-                return False, self.last_position, 0.0
-            
-            # Şablon eşleme
-            result = cv2.matchTemplate(
-                search_img, 
-                self.template, 
-                self.matching_method
-            )
-            
-            # En iyi eşleşmeyi bul
-            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-            
-            # Yönteme göre en iyi konumu seç
-            if self.matching_method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]:
-                best_loc = min_loc
-                confidence = 1.0 - min_val  # Düşük değer daha iyi
-            else:
-                best_loc = max_loc
-                confidence = max_val  # Yüksek değer daha iyi
-            
-            # Minimum korelasyon kontrolü
-            if confidence < self.min_correlation:
-                logger.debug(f"Low correlation: {confidence:.3f} < {self.min_correlation}")
-                return False, self.last_position, confidence
-            
-            # Global koordinatlara çevir
-            new_x = best_loc[0] + offset_x + self.template.shape[1] // 2
-            new_y = best_loc[1] + offset_y + self.template.shape[0] // 2
-            
-            new_position = Point2D(float(new_x), float(new_y))
-            
-            # Sub-piksel iyileştirme
-            if confidence > 0.8:  # Yüksek güven durumunda
-                new_position = self._refine_position(result, Point2D(best_loc[0], best_loc[1]))
-                new_position = Point2D(
-                    new_position.x + offset_x + self.template.shape[1] // 2,
-                    new_position.y + offset_y + self.template.shape[0] // 2
+            # Pyramid tracking kullan
+            if self.use_pyramid and self.fps < 20:
+                # Pyramid ile track
+                success, new_position, confidence = self._track_with_pyramid(
+                    gray, self.template, self.last_position, adaptive_radius
                 )
+            else:
+                # Normal tracking
+                # Arama bölgesini al (adaptif radius ile)
+                if search_region is None:
+                    # Adaptif radius ile yeni search region
+                    x1 = max(0, int(self.last_position.x - adaptive_radius))
+                    y1 = max(0, int(self.last_position.y - adaptive_radius))
+                    x2 = min(gray.shape[1], int(self.last_position.x + adaptive_radius))
+                    y2 = min(gray.shape[0], int(self.last_position.y + adaptive_radius))
+                    search_region = (x1, y1, x2 - x1, y2 - y1)
+                
+                search_img, offset_x, offset_y = self._get_search_region(
+                    gray, self.last_position, search_region
+                )
+
+                # Arama bölgesi çok küçükse
+                if (
+                    search_img.shape[0] < self.template.shape[0]
+                    or search_img.shape[1] < self.template.shape[1]
+                ):
+                    logger.warning("Search region too small for template")
+                    return False, self.last_position, 0.0
+
+                # Şablon eşleme
+                result = cv2.matchTemplate(search_img, self.template, self.matching_method)
+
+                # En iyi eşleşmeyi bul
+                min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+
+                # Yönteme göre en iyi konumu seç
+                if self.matching_method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]:
+                    best_loc = min_loc
+                    confidence = 1.0 - min_val  # Düşük değer daha iyi
+                else:
+                    best_loc = max_loc
+                    confidence = max_val  # Yüksek değer daha iyi
+
+                # Minimum korelasyon kontrolü
+                if confidence < self.min_correlation:
+                    logger.debug(f"Low correlation: {confidence:.3f} < {self.min_correlation}")
+                    return False, self.last_position, confidence
+
+                # Global koordinatlara çevir
+                new_x = best_loc[0] + offset_x + self.template.shape[1] // 2
+                new_y = best_loc[1] + offset_y + self.template.shape[0] // 2
+
+                new_position = Point2D(float(new_x), float(new_y))
+
+                # Sub-piksel iyileştirme
+                if confidence > 0.8:  # Yüksek güven durumunda
+                    new_position = self._refine_position(result, Point2D(best_loc[0], best_loc[1]))
+                    new_position = Point2D(
+                        new_position.x + offset_x + self.template.shape[1] // 2,
+                        new_position.y + offset_y + self.template.shape[0] // 2,
+                    )
+
+            # Hareket geçmişini güncelle
+            self._update_motion_history(new_position)
             
             # Güncelle
             self.last_position = new_position
             self.confidence_history.append(confidence)
-            
+
             # Güven geçmişini sınırla
             if len(self.confidence_history) > 100:
                 self.confidence_history.pop(0)
-            
+
             return True, new_position, confidence
-            
+
         except Exception as e:
             logger.error(f"Template tracking error: {str(e)}")
             return False, self.last_position, 0.0
-    
-    def update_template(self, 
-                       image: np.ndarray,
-                       position: Point2D,
-                       update_rate: float):
+
+    def _track_with_pyramid(
+        self, image: np.ndarray, template: np.ndarray, 
+        center: Point2D, search_radius: int
+    ) -> Tuple[bool, Point2D, float]:
         """
-        Şablonu güncelle.
+        Pyramid-based coarse-to-fine tracking.
         
+        Args:
+            image: Arama yapılacak görüntü
+            template: Şablon
+            center: Arama merkezi
+            search_radius: Arama yarıçapı
+            
+        Returns:
+            Tuple: (başarılı, pozisyon, güven)
+        """
+        # Pyramid oluştur
+        img_pyramid = [image]
+        template_pyramid = [template]
+        
+        for i in range(self.pyramid_levels - 1):
+            img_pyramid.append(cv2.pyrDown(img_pyramid[-1]))
+            template_pyramid.append(cv2.pyrDown(template_pyramid[-1]))
+        
+        # En düşük seviyeden başla (geniş arama)
+        scale = 2 ** (self.pyramid_levels - 1)
+        coarse_center = Point2D(center.x / scale, center.y / scale)
+        coarse_radius = search_radius // scale
+        
+        # En düşük seviyede ara
+        level = self.pyramid_levels - 1
+        search_img, offset_x, offset_y = self._get_search_region(
+            img_pyramid[level], coarse_center, 
+            (int(coarse_center.x - coarse_radius), 
+             int(coarse_center.y - coarse_radius),
+             coarse_radius * 2, coarse_radius * 2)
+        )
+        
+        if (search_img.shape[0] < template_pyramid[level].shape[0] or
+            search_img.shape[1] < template_pyramid[level].shape[1]):
+            return False, center, 0.0
+        
+        result = cv2.matchTemplate(search_img, template_pyramid[level], self.matching_method)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+        
+        if self.matching_method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]:
+            best_loc = min_loc
+            confidence = 1.0 - min_val
+        else:
+            best_loc = max_loc
+            confidence = max_val
+        
+        # İlk tahmin
+        best_x = best_loc[0] + offset_x + template_pyramid[level].shape[1] // 2
+        best_y = best_loc[1] + offset_y + template_pyramid[level].shape[0] // 2
+        
+        # Yukarı çıkarken hassaslaştır
+        for level in range(self.pyramid_levels - 2, -1, -1):
+            # Pozisyonu scale et
+            best_x *= 2
+            best_y *= 2
+            
+            # Bu seviyede ince arama yap
+            fine_center = Point2D(best_x, best_y)
+            fine_radius = 5  # Küçük arama alanı
+            
+            search_img, offset_x, offset_y = self._get_search_region(
+                img_pyramid[level], fine_center,
+                (int(fine_center.x - fine_radius),
+                 int(fine_center.y - fine_radius),
+                 fine_radius * 2, fine_radius * 2)
+            )
+            
+            if (search_img.shape[0] >= template_pyramid[level].shape[0] and
+                search_img.shape[1] >= template_pyramid[level].shape[1]):
+                
+                result = cv2.matchTemplate(search_img, template_pyramid[level], self.matching_method)
+                min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+                
+                if self.matching_method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]:
+                    best_loc = min_loc
+                    confidence = 1.0 - min_val
+                else:
+                    best_loc = max_loc
+                    confidence = max_val
+                
+                best_x = best_loc[0] + offset_x + template_pyramid[level].shape[1] // 2
+                best_y = best_loc[1] + offset_y + template_pyramid[level].shape[0] // 2
+        
+        return True, Point2D(float(best_x), float(best_y)), confidence
+    
+    def update_template(self, image: np.ndarray, position: Point2D, update_rate: float):
+        """
+        Şablonu güncelle (Motion blur compensation ile).
+
         Args:
             image: Güncel görüntü
             position: Güncel pozisyon
@@ -328,30 +500,38 @@ class TemplateMatchingTracker(BaseTracker, ITracker):
         try:
             if update_rate <= 0:
                 return
-            
+
+            # Motion blur compensation - hızlı hareket durumunda daha az güncelle
+            if len(self.velocity_history) > 0:
+                current_velocity = self.velocity_history[-1]
+                velocity_threshold = 10.0  # piksel/frame
+                
+                if current_velocity > velocity_threshold:
+                    # Hızlı hareket - güncelleme oranını azalt
+                    update_rate *= 0.2  # %80 azalt
+                    logger.debug(f"High velocity detected ({current_velocity:.1f}), reducing update rate to {update_rate:.2f}")
+
             # Gri tonlamaya çevir
             if len(image.shape) == 3:
                 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             else:
                 gray = image.copy()
-            
+
             # Yeni şablonu çıkar
             new_template = self._extract_template(gray, position, self.template_size)
-            
+
             if new_template is None:
                 logger.warning("Failed to extract new template for update")
                 return
-            
+
             # Ağırlıklı ortalama ile güncelle
             if self.template is not None:
                 self.template = cv2.addWeighted(
-                    self.template, 1.0 - update_rate,
-                    new_template, update_rate,
-                    0
+                    self.template, 1.0 - update_rate, new_template, update_rate, 0
                 )
             else:
                 self.template = new_template
-                
+
         except Exception as e:
             logger.error(f"Template update error: {str(e)}")
 
@@ -359,56 +539,51 @@ class TemplateMatchingTracker(BaseTracker, ITracker):
 class OpticalFlowTracker(BaseTracker, ITracker):
     """
     Optik akış tabanlı izleyici.
-    
+
     Lucas-Kanade optik akış kullanarak izleme yapar.
     Küçük hareketler için çok hassas.
     """
-    
-    def __init__(self,
-                 template_size: int = 21,
-                 search_radius: int = 30,
-                 pyramid_levels: int = 3):
+
+    def __init__(self, template_size: int = 21, search_radius: int = 30, pyramid_levels: int = 3, fps: float = 30.0):
         """
         OpticalFlowTracker constructor.
-        
+
         Args:
             template_size: Şablon boyutu
             search_radius: Arama yarıçapı
             pyramid_levels: Piramit seviyeleri
+            fps: Video frame rate
         """
-        super().__init__(template_size, search_radius)
-        self.pyramid_levels = pyramid_levels
+        super().__init__(template_size, search_radius, fps)
+        self.pyramid_levels = pyramid_levels if fps >= 20 else max(pyramid_levels, 4)  # Düşük FPS için daha fazla level
         self.feature_params = dict(
-            maxCorners=100,
-            qualityLevel=0.3,
-            minDistance=7,
+            maxCorners=150 if fps < 20 else 100,  # Düşük FPS için daha fazla özellik
+            qualityLevel=0.2 if fps < 20 else 0.3,  # Daha toleranslı
+            minDistance=5 if fps < 20 else 7,
             blockSize=7
         )
         self.lk_params = dict(
-            winSize=(15, 15),
-            maxLevel=pyramid_levels,
-            criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03)
+            winSize=(21, 21) if fps < 20 else (15, 15),  # Düşük FPS için daha büyük pencere
+            maxLevel=self.pyramid_levels,
+            criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03),
         )
         self.prev_gray = None
         self.prev_pts = None
-        
+
     @property
     def method_name(self) -> str:
         """İzleme yöntemi adı"""
         return "Optical Flow"
-    
-    def initialize(self, 
-                  image: np.ndarray, 
-                  point: Point2D,
-                  template_size: int) -> bool:
+
+    def initialize(self, image: np.ndarray, point: Point2D, template_size: int) -> bool:
         """
         İzleyiciyi başlat.
-        
+
         Args:
             image: Başlangıç görüntüsü
             point: İzlenecek nokta
             template_size: Şablon boyutu
-            
+
         Returns:
             bool: Başarılı mı?
         """
@@ -418,12 +593,12 @@ class OpticalFlowTracker(BaseTracker, ITracker):
                 self.prev_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             else:
                 self.prev_gray = image.copy()
-            
+
             # İzlenecek noktayı ayarla
             self.prev_pts = np.array([[point.x, point.y]], dtype=np.float32)
             self.last_position = point
             self.template_size = template_size
-            
+
             # Template region'da özellik noktaları bul
             mask = np.zeros(self.prev_gray.shape, dtype=np.uint8)
             half_size = template_size // 2
@@ -431,38 +606,35 @@ class OpticalFlowTracker(BaseTracker, ITracker):
                 mask,
                 (int(point.x - half_size), int(point.y - half_size)),
                 (int(point.x + half_size), int(point.y + half_size)),
-                255, -1
+                255,
+                -1,
             )
-            
+
             # Ek özellik noktaları
-            p0 = cv2.goodFeaturesToTrack(
-                self.prev_gray,
-                mask=mask,
-                **self.feature_params
-            )
-            
+            p0 = cv2.goodFeaturesToTrack(self.prev_gray, mask=mask, **self.feature_params)
+
             if p0 is not None and len(p0) > 0:
                 # Ana noktayı ve yakın özellikleri birleştir
                 self.prev_pts = np.vstack([self.prev_pts, p0.reshape(-1, 2)])
-            
+
             logger.debug(f"Optical flow initialized with {len(self.prev_pts)} points")
-            
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Optical flow initialization error: {str(e)}")
             return False
-    
-    def track(self, 
-             image: np.ndarray,
-             search_region: Optional[Tuple[int, int, int, int]] = None) -> Tuple[bool, Point2D, float]:
+
+    def track(
+        self, image: np.ndarray, search_region: Optional[Tuple[int, int, int, int]] = None
+    ) -> Tuple[bool, Point2D, float]:
         """
         Noktayı yeni frame'de izle.
-        
+
         Args:
             image: Yeni frame
             search_region: Arama bölgesi (x, y, width, height)
-            
+
         Returns:
             Tuple: (başarılı, yeni_pozisyon, güven_skoru)
         """
@@ -470,98 +642,89 @@ class OpticalFlowTracker(BaseTracker, ITracker):
             if self.prev_gray is None or self.prev_pts is None:
                 logger.error("Optical flow tracker not initialized")
                 return False, Point2D(0, 0), 0.0
-            
+
             # Gri tonlamaya çevir
             if len(image.shape) == 3:
                 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             else:
                 gray = image.copy()
-            
+
             # Optik akış hesapla
             next_pts, status, error = cv2.calcOpticalFlowPyrLK(
-                self.prev_gray,
-                gray,
-                self.prev_pts,
-                None,
-                **self.lk_params
+                self.prev_gray, gray, self.prev_pts, None, **self.lk_params
             )
-            
+
             # Başarılı noktaları filtrele
             if next_pts is not None and status is not None:
                 good_new = next_pts[status == 1]
                 good_old = self.prev_pts[status == 1]
-                
+
                 if len(good_new) > 0:
                     # Ana nokta (ilk nokta) takibi
                     if status[0] == 1:
                         new_position = Point2D(next_pts[0][0], next_pts[0][1])
-                        
+
                         # Güven hesapla
                         # 1. Error değerine göre
                         point_error = error[0][0] if error is not None else 10.0
                         error_confidence = np.exp(-point_error / 10.0)
-                        
+
                         # 2. Hareket tutarlılığına göre
                         if len(good_new) > 1:
                             # Diğer noktaların ortalama hareketi
                             mean_motion = np.mean(good_new - good_old, axis=0)
                             point_motion = next_pts[0] - self.prev_pts[0]
-                            
+
                             # Hareket tutarlılığı
                             motion_diff = np.linalg.norm(point_motion - mean_motion)
                             motion_confidence = np.exp(-motion_diff / 5.0)
                         else:
                             motion_confidence = 0.8
-                        
+
                         # Toplam güven
                         confidence = error_confidence * motion_confidence
-                        
+
                         # Güncelle
                         self.prev_gray = gray
                         self.prev_pts = good_new.reshape(-1, 1, 2).astype(np.float32)
                         self.last_position = new_position
-                        
+
                         return True, new_position, confidence
                     else:
                         # Ana nokta kaybedildi
                         logger.warning("Main tracking point lost in optical flow")
-                        
+
                         # En yakın başarılı noktayı kullan
                         if len(good_new) > 0:
                             distances = np.linalg.norm(
-                                good_old - self.prev_pts[0].reshape(1, -1), 
-                                axis=1
+                                good_old - self.prev_pts[0].reshape(1, -1), axis=1
                             )
                             nearest_idx = np.argmin(distances)
                             new_position = Point2D(
-                                good_new[nearest_idx][0], 
-                                good_new[nearest_idx][1]
+                                good_new[nearest_idx][0], good_new[nearest_idx][1]
                             )
-                            
+
                             # Düşük güven
                             confidence = 0.5
-                            
+
                             # Güncelle
                             self.prev_gray = gray
                             self.prev_pts = good_new.reshape(-1, 1, 2).astype(np.float32)
                             self.last_position = new_position
-                            
+
                             return True, new_position, confidence
-            
+
             logger.warning("Optical flow tracking failed")
             return False, self.last_position, 0.0
-            
+
         except Exception as e:
             logger.error(f"Optical flow tracking error: {str(e)}")
             return False, self.last_position, 0.0
-    
-    def update_template(self, 
-                       image: np.ndarray,
-                       position: Point2D,
-                       update_rate: float):
+
+    def update_template(self, image: np.ndarray, position: Point2D, update_rate: float):
         """
         Şablonu güncelle (Optik akış için özellik noktalarını güncelle).
-        
+
         Args:
             image: Güncel görüntü
             position: Güncel pozisyon
@@ -570,13 +733,13 @@ class OpticalFlowTracker(BaseTracker, ITracker):
         try:
             if update_rate <= 0:
                 return
-            
+
             # Yeni özellik noktaları bul
             if len(image.shape) == 3:
                 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             else:
                 gray = image.copy()
-            
+
             # Mevcut nokta etrafında maske
             mask = np.zeros(gray.shape, dtype=np.uint8)
             half_size = self.template_size // 2
@@ -584,56 +747,39 @@ class OpticalFlowTracker(BaseTracker, ITracker):
                 mask,
                 (int(position.x - half_size), int(position.y - half_size)),
                 (int(position.x + half_size), int(position.y + half_size)),
-                255, -1
+                255,
+                -1,
             )
-            
+
             # Yeni özellikler
-            new_features = cv2.goodFeaturesToTrack(
-                gray,
-                mask=mask,
-                **self.feature_params
-            )
-            
+            new_features = cv2.goodFeaturesToTrack(gray, mask=mask, **self.feature_params)
+
             if new_features is not None and len(new_features) > 0:
                 # Ana noktayı koru, yeni özellikleri ekle
                 main_point = np.array([[position.x, position.y]], dtype=np.float32)
-                
+
                 # Eski ve yeni özellikleri birleştir
                 if update_rate < 1.0:
                     # Kısmi güncelleme - bazı eski noktaları koru
                     n_keep = int(len(self.prev_pts) * (1 - update_rate))
                     if n_keep > 0:
-                        old_features = self.prev_pts[1:n_keep+1]
-                        self.prev_pts = np.vstack([
-                            main_point,
-                            old_features,
-                            new_features.reshape(-1, 2)
-                        ])
+                        old_features = self.prev_pts[1 : n_keep + 1]
+                        self.prev_pts = np.vstack(
+                            [main_point, old_features, new_features.reshape(-1, 2)]
+                        )
                     else:
-                        self.prev_pts = np.vstack([
-                            main_point,
-                            new_features.reshape(-1, 2)
-                        ])
+                        self.prev_pts = np.vstack([main_point, new_features.reshape(-1, 2)])
                 else:
                     # Tam güncelleme
-                    self.prev_pts = np.vstack([
-                        main_point,
-                        new_features.reshape(-1, 2)
-                    ])
-                
+                    self.prev_pts = np.vstack([main_point, new_features.reshape(-1, 2)])
+
                 # Maksimum nokta sayısını sınırla
                 if len(self.prev_pts) > 50:
                     # En yakın noktaları koru
-                    distances = np.linalg.norm(
-                        self.prev_pts[1:] - main_point,
-                        axis=1
-                    )
+                    distances = np.linalg.norm(self.prev_pts[1:] - main_point, axis=1)
                     keep_indices = np.argsort(distances)[:49]
-                    self.prev_pts = np.vstack([
-                        main_point,
-                        self.prev_pts[1:][keep_indices]
-                    ])
-                
+                    self.prev_pts = np.vstack([main_point, self.prev_pts[1:][keep_indices]])
+
         except Exception as e:
             logger.error(f"Feature update error: {str(e)}")
 
@@ -641,17 +787,43 @@ class OpticalFlowTracker(BaseTracker, ITracker):
 def create_tracker(method: str, params: Dict[str, Any]) -> ITracker:
     """
     İzleyici factory fonksiyonu.
-    
+
     Args:
         method: İzleme yöntemi
         params: Parametreler
-        
+
     Returns:
         ITracker: İzleyici instance
     """
+    # FPS'i parametrelerden al veya varsayılan kullan
+    fps = params.get('fps', 30.0)
+    
+    # FPS'e göre varsayılan parametreleri ayarla
+    if fps < 20:
+        # 15 FPS için optimize edilmiş parametreler
+        default_params = {
+            'search_radius': 60,
+            'template_size': 25,
+            'fps': fps,
+            'use_pyramid': True,
+            'pyramid_levels': 3
+        }
+    else:
+        # Normal FPS için parametreler
+        default_params = {
+            'search_radius': 30,
+            'template_size': 21,
+            'fps': fps,
+            'use_pyramid': False,
+            'pyramid_levels': 2
+        }
+    
+    # Kullanıcı parametrelerini varsayılanlarla birleştir
+    final_params = {**default_params, **params}
+    
     if method == "template_matching":
-        return TemplateMatchingTracker(**params)
+        return TemplateMatchingTracker(**final_params)
     elif method == "optical_flow":
-        return OpticalFlowTracker(**params)
+        return OpticalFlowTracker(**final_params)
     else:
         raise ValueError(f"Unknown tracking method: {method}")

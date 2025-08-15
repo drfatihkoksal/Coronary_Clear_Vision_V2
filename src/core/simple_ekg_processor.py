@@ -8,6 +8,7 @@ from scipy import signal
 from scipy.ndimage import median_filter
 from typing import Dict
 
+
 class SimpleEKGProcessor:
     """Simple and effective EKG processor"""
 
@@ -31,7 +32,7 @@ class SimpleEKGProcessor:
         window_size = int(0.2 * self.sampling_rate)  # 200ms window
         if window_size % 2 == 0:
             window_size += 1
-        baseline = median_filter(signal_dc_removed, size=window_size, mode='reflect')
+        baseline = median_filter(signal_dc_removed, size=window_size, mode="reflect")
         signal_detrended = signal_dc_removed - baseline
 
         # 3. Apply bandpass filter (0.5-40 Hz for ECG)
@@ -40,7 +41,7 @@ class SimpleEKGProcessor:
         high_freq = min(40 / nyquist, 0.99)
 
         if low_freq < high_freq:
-            sos = signal.butter(2, [low_freq, high_freq], btype='band', output='sos')
+            sos = signal.butter(2, [low_freq, high_freq], btype="band", output="sos")
             signal_filtered = signal.sosfiltfilt(sos, signal_detrended)
         else:
             signal_filtered = signal_detrended
@@ -67,10 +68,10 @@ class SimpleEKGProcessor:
         variability = np.std(signal) / (np.mean(np.abs(signal)) + 1e-10)
 
         quality = {
-            'snr_db': snr,
-            'clipping_ratio': clipping_ratio,
-            'variability': variability,
-            'is_good': snr > 10 and clipping_ratio < 0.01 and variability > 0.1
+            "snr_db": snr,
+            "clipping_ratio": clipping_ratio,
+            "variability": variability,
+            "is_good": snr > 10 and clipping_ratio < 0.01 and variability > 0.1,
         }
 
         return quality

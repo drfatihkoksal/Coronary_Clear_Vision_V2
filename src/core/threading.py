@@ -11,6 +11,7 @@ import traceback
 
 class WorkerSignals(QObject):
     """Signals for worker thread communication"""
+
     started = pyqtSignal()
     progress = pyqtSignal(int, int)  # current, total
     result = pyqtSignal(dict)
@@ -36,16 +37,16 @@ class Worker(QThread):
 
         try:
             # Add progress callback to kwargs if function supports it
-            if 'progress_callback' in self.func.__code__.co_varnames:
-                self.kwargs['progress_callback'] = self._progress_callback
+            if "progress_callback" in self.func.__code__.co_varnames:
+                self.kwargs["progress_callback"] = self._progress_callback
 
             result = self.func(*self.args, **self.kwargs)
-            self.signals.result.emit({'success': True, 'data': result})
+            self.signals.result.emit({"success": True, "data": result})
 
         except Exception as e:
             error_msg = f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}"
             self.signals.error.emit(error_msg)
-            self.signals.result.emit({'success': False, 'error': error_msg})
+            self.signals.result.emit({"success": False, "error": error_msg})
 
         finally:
             self.signals.finished.emit()
@@ -68,8 +69,9 @@ class Worker(QThread):
 class SegmentationWorker(Worker):
     """Specialized worker for vessel segmentation"""
 
-    def __init__(self, segmenter, frame: np.ndarray, points: list,
-                 frame_index: int, settings: dict):
+    def __init__(
+        self, segmenter, frame: np.ndarray, points: list, frame_index: int, settings: dict
+    ):
         def segment_task():
             return segmenter.segment_vessel(frame, points, frame_index, settings)
 
@@ -80,12 +82,16 @@ class SegmentationWorker(Worker):
 class QCAWorker(Worker):
     """Specialized worker for QCA analysis"""
 
-    def __init__(self, qca_analyzer, frame: np.ndarray, vessel_mask: np.ndarray,
-                 proximal_point: tuple, distal_point: tuple):
+    def __init__(
+        self,
+        qca_analyzer,
+        frame: np.ndarray,
+        vessel_mask: np.ndarray,
+        proximal_point: tuple,
+        distal_point: tuple,
+    ):
         def qca_task():
-            return qca_analyzer.analyze_stenosis(
-                frame, vessel_mask, proximal_point, distal_point
-            )
+            return qca_analyzer.analyze_stenosis(frame, vessel_mask, proximal_point, distal_point)
 
         super().__init__(qca_task)
 
@@ -135,8 +141,7 @@ class TrackingWorker(Worker):
 class BatchTrackingWorker(Worker):
     """Worker for tracking points through all frames"""
 
-    def __init__(self, viewer, current_frame_idx: int, num_frames: int,
-                 initial_points: list):
+    def __init__(self, viewer, current_frame_idx: int, num_frames: int, initial_points: list):
         def batch_tracking_task(progress_callback=None):
             all_tracked = {current_frame_idx: initial_points}
 
@@ -152,9 +157,7 @@ class BatchTrackingWorker(Worker):
 
             # Track backward
             if current_frame_idx > 0:
-                backward_worker = TrackingWorker(
-                    viewer, current_frame_idx, 0, initial_points
-                )
+                backward_worker = TrackingWorker(viewer, current_frame_idx, 0, initial_points)
                 backward_result = backward_worker.func(
                     lambda c, t: progress_callback(t + c, t * 2) if progress_callback else True
                 )
@@ -180,8 +183,7 @@ class FrameProcessor(QThread):
         self._mutex = QMutex()
         self._running = True
 
-    def add_frame_request(self, frame_index: int, window_center: float,
-                         window_width: float):
+    def add_frame_request(self, frame_index: int, window_center: float, window_width: float):
         """Add frame to processing queue"""
         with QMutexLocker(self._mutex):
             request = (frame_index, window_center, window_width)

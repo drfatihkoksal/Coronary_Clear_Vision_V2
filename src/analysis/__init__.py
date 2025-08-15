@@ -5,4 +5,4 @@ Includes segmentation and QCA analysis
 
 from .qca_analysis import QCAAnalysis
 
-__all__ = ['QCAAnalysis']
+__all__ = ["QCAAnalysis"]

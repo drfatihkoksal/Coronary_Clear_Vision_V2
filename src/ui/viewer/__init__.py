@@ -4,4 +4,4 @@
 from ..enhanced_viewer_widget import EnhancedDicomViewer
 from .overlay_item import OverlayItem
 
-__all__ = ['EnhancedDicomViewer', 'OverlayItem']
+__all__ = ["EnhancedDicomViewer", "OverlayItem"]

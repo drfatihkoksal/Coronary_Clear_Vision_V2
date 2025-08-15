@@ -5,4 +5,4 @@ from .segmentation_service import SegmentationService
 from .qca_service import QCAService
 from .dicom_service import DicomService
 
-__all__ = ['CalibrationService', 'SegmentationService', 'QCAService', 'DicomService']
+__all__ = ["CalibrationService", "SegmentationService", "QCAService", "DicomService"]

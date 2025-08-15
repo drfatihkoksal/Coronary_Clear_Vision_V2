@@ -11,7 +11,7 @@ from ..core.simple_tracker import get_tracker
 class InteractionState(ABC):
     """Base class for interaction states."""
 
-    def __init__(self, viewer: 'ViewerWidget'):
+    def __init__(self, viewer: "ViewerWidget"):
         """Initialize with reference to viewer widget."""
         self.viewer = viewer
 
@@ -51,7 +51,7 @@ class InteractionState(ABC):
 class ViewState(InteractionState):
     """Default viewing state with pan and zoom."""
 
-    def __init__(self, viewer: 'ViewerWidget'):
+    def __init__(self, viewer: "ViewerWidget"):
         super().__init__(viewer)
         self.is_panning = False
         self.last_pan_point = None
@@ -68,8 +68,8 @@ class ViewState(InteractionState):
     def handle_mouse_press(self, event: QMouseEvent) -> bool:
         """Start panning on middle button or with modifier."""
         if event.button() == Qt.MouseButton.MiddleButton or (
-            event.button() == Qt.MouseButton.LeftButton and
-            event.modifiers() & Qt.KeyboardModifier.ControlModifier
+            event.button() == Qt.MouseButton.LeftButton
+            and event.modifiers() & Qt.KeyboardModifier.ControlModifier
         ):
             self.is_panning = True
             self.last_pan_point = event.position()
@@ -113,7 +113,7 @@ class ViewState(InteractionState):
 class CalibrationState(InteractionState):
     """State for catheter calibration."""
 
-    def __init__(self, viewer: 'ViewerWidget'):
+    def __init__(self, viewer: "ViewerWidget"):
         super().__init__(viewer)
         self.start_point: Optional[Point] = None
         self.end_point: Optional[Point] = None
@@ -169,9 +169,7 @@ class CalibrationState(InteractionState):
             if self.start_point and self.end_point:
                 distance = self.start_point.distance_to(self.end_point)
                 if distance > 10:  # Minimum 10 pixels
-                    self.viewer.calibration_completed.emit(
-                        self.start_point, self.end_point
-                    )
+                    self.viewer.calibration_completed.emit(self.start_point, self.end_point)
 
             self.viewer.update()
             return True
@@ -193,14 +191,10 @@ class CalibrationState(InteractionState):
             pen = QPen(QColor(255, 255, 0), 2)
             painter.setPen(pen)
 
-            start = self.viewer.map_from_image(
-                QPointF(self.start_point.x, self.start_point.y)
-            )
+            start = self.viewer.map_from_image(QPointF(self.start_point.x, self.start_point.y))
 
             if self.end_point:
-                end = self.viewer.map_from_image(
-                    QPointF(self.end_point.x, self.end_point.y)
-                )
+                end = self.viewer.map_from_image(QPointF(self.end_point.x, self.end_point.y))
             elif self.temp_end_point:
                 end = self.viewer.map_from_image(
                     QPointF(self.temp_end_point.x, self.temp_end_point.y)
@@ -219,8 +213,7 @@ class CalibrationState(InteractionState):
             distance = self.start_point.distance_to(
                 self.end_point if self.end_point else self.temp_end_point
             )
-            mid_point = QPointF((start.x() + end.x()) / 2,
-                               (start.y() + end.y()) / 2)
+            mid_point = QPointF((start.x() + end.x()) / 2, (start.y() + end.y()) / 2)
             painter.drawText(mid_point, f"{distance:.1f} px")
 
     def get_state_name(self) -> str:
@@ -230,7 +223,7 @@ class CalibrationState(InteractionState):
 class SegmentationState(InteractionState):
     """State for vessel segmentation selection."""
 
-    def __init__(self, viewer: 'ViewerWidget'):
+    def __init__(self, viewer: "ViewerWidget"):
         super().__init__(viewer)
         self.seed_points: List[Point] = []
         self.is_drawing_box = False
@@ -291,9 +284,7 @@ class SegmentationState(InteractionState):
 
             # Emit segmentation region selected
             if self.box_start and self.box_end:
-                self.viewer.segmentation_region_selected.emit(
-                    self.box_start, self.box_end
-                )
+                self.viewer.segmentation_region_selected.emit(self.box_start, self.box_end)
 
             self.viewer.update()
             return True
@@ -333,18 +324,12 @@ class SegmentationState(InteractionState):
             painter.setPen(pen)
             painter.setBrush(Qt.BrushStyle.NoBrush)
 
-            start = self.viewer.map_from_image(
-                QPointF(self.box_start.x, self.box_start.y)
-            )
+            start = self.viewer.map_from_image(QPointF(self.box_start.x, self.box_start.y))
 
             if self.box_end:
-                end = self.viewer.map_from_image(
-                    QPointF(self.box_end.x, self.box_end.y)
-                )
+                end = self.viewer.map_from_image(QPointF(self.box_end.x, self.box_end.y))
             elif self.temp_box_end:
-                end = self.viewer.map_from_image(
-                    QPointF(self.temp_box_end.x, self.temp_box_end.y)
-                )
+                end = self.viewer.map_from_image(QPointF(self.temp_box_end.x, self.temp_box_end.y))
             else:
                 return
 
@@ -358,7 +343,7 @@ class SegmentationState(InteractionState):
 class TrackingState(InteractionState):
     """State for point tracking across frames."""
 
-    def __init__(self, viewer: 'ViewerWidget'):
+    def __init__(self, viewer: "ViewerWidget"):
         super().__init__(viewer)
         self.point_tracker = get_tracker()
         self.selected_point_id: Optional[str] = None
@@ -379,9 +364,7 @@ class TrackingState(InteractionState):
 
             if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
                 # Add new tracking point
-                point_id = self.point_tracker.add_point(
-                    point, self.viewer.current_frame
-                )
+                point_id = self.point_tracker.add_point(point, self.viewer.current_frame)
                 self.viewer.tracking_point_added.emit(point_id, point)
             else:
                 # Select existing point
@@ -409,8 +392,7 @@ class TrackingState(InteractionState):
 
     def handle_mouse_move(self, event: QMouseEvent) -> bool:
         """Handle point dragging."""
-        if (event.buttons() & Qt.MouseButton.LeftButton and
-            self.selected_point_id):
+        if event.buttons() & Qt.MouseButton.LeftButton and self.selected_point_id:
             pos = self.viewer.map_to_image(event.position())
             point = Point(pos.x(), pos.y())
 
@@ -453,7 +435,11 @@ class TrackingState(InteractionState):
                     screen_pos = self.viewer.map_from_image(QPointF(pos.x, pos.y))
 
                     # Draw point
-                    color = QColor(255, 0, 0) if point_id == self.selected_point_id else QColor(0, 255, 255)
+                    color = (
+                        QColor(255, 0, 0)
+                        if point_id == self.selected_point_id
+                        else QColor(0, 255, 255)
+                    )
                     pen = QPen(color, 2)
                     painter.setPen(pen)
                     painter.setBrush(color)
@@ -479,11 +465,15 @@ class TrackingState(InteractionState):
 
     def track_to_current_frame(self):
         """Track all points to current frame."""
-        if not hasattr(self.viewer, 'get_frame'):
+        if not hasattr(self.viewer, "get_frame"):
             return
 
         # Get frames
-        source_frame_num = next(iter(self.point_tracker.tracked_points.values())).frame_history.keys()[0] if self.point_tracker.tracked_points else 0
+        source_frame_num = (
+            next(iter(self.point_tracker.tracked_points.values())).frame_history.keys()[0]
+            if self.point_tracker.tracked_points
+            else 0
+        )
         target_frame_num = self.viewer.current_frame
 
         if source_frame_num == target_frame_num:
@@ -494,8 +484,7 @@ class TrackingState(InteractionState):
 
         if source_frame is not None and target_frame is not None:
             self.point_tracker.track_to_frame(
-                source_frame, target_frame,
-                source_frame_num, target_frame_num
+                source_frame, target_frame, source_frame_num, target_frame_num
             )
             self.viewer.update()
 
@@ -509,20 +498,20 @@ class InteractionController(QObject):
     # Signals
     state_changed = pyqtSignal(str)
 
-    def __init__(self, viewer: 'ViewerWidget'):
+    def __init__(self, viewer: "ViewerWidget"):
         super().__init__()
         self.viewer = viewer
 
         # Create states
         self.states: Dict[str, InteractionState] = {
-            'view': ViewState(viewer),
-            'calibration': CalibrationState(viewer),
-            'segmentation': SegmentationState(viewer),
-            'tracking': TrackingState(viewer)
+            "view": ViewState(viewer),
+            "calibration": CalibrationState(viewer),
+            "segmentation": SegmentationState(viewer),
+            "tracking": TrackingState(viewer),
         }
 
         # Set initial state
-        self.current_state: InteractionState = self.states['view']
+        self.current_state: InteractionState = self.states["view"]
         self.current_state.enter()
 
     def set_state(self, state_name: str):

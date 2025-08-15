@@ -3,7 +3,7 @@ Data Transfer Objects for application data.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, List, Tuple, Dict, Any
+from typing import Optional, Tuple, Dict, Any
 import numpy as np
 from datetime import datetime
 
@@ -11,13 +11,14 @@ from datetime import datetime
 @dataclass
 class ImageData:
     """DTO for image data."""
+
     array: np.ndarray
     width: int
     height: int
     channels: int
     dtype: np.dtype
     metadata: Dict[str, Any] = field(default_factory=dict)
-    
+
     @classmethod
     def from_array(cls, array: np.ndarray, metadata: Optional[Dict[str, Any]] = None):
         """Create ImageData from numpy array."""
@@ -28,20 +29,21 @@ class ImageData:
             height, width, channels = array.shape
         else:
             raise ValueError(f"Invalid array dimensions: {array.ndim}")
-        
+
         return cls(
             array=array,
             width=width,
             height=height,
             channels=channels,
             dtype=array.dtype,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
 
 @dataclass
 class SegmentationResult:
     """DTO for segmentation results."""
+
     mask: np.ndarray
     confidence: float
     processing_time: float
@@ -53,13 +55,14 @@ class SegmentationResult:
 @dataclass
 class CalibrationData:
     """DTO for calibration data."""
+
     point1: Tuple[float, float]
     point2: Tuple[float, float]
     reference_size: float
     unit: str
     pixel_size: float
     timestamp: datetime = field(default_factory=datetime.now)
-    
+
     @property
     def pixels_per_unit(self) -> float:
         """Calculate pixels per unit."""
@@ -72,6 +75,7 @@ class CalibrationData:
 @dataclass
 class QCAMeasurement:
     """DTO for QCA measurements."""
+
     vessel_id: str
     frame_number: int
     reference_diameter: float
@@ -87,6 +91,7 @@ class QCAMeasurement:
 @dataclass
 class DicomMetadata:
     """DTO for DICOM metadata."""
+
     patient_name: str
     patient_id: str
     study_date: Optional[datetime]
@@ -106,6 +111,7 @@ class DicomMetadata:
 @dataclass
 class ProcessingRequest:
     """DTO for processing requests."""
+
     input_path: str
     output_path: Optional[str]
     processing_type: str  # 'segmentation', 'qca', 'tracking', etc.
@@ -116,6 +122,7 @@ class ProcessingRequest:
 @dataclass
 class ProcessingResult:
     """DTO for processing results."""
+
     request: ProcessingRequest
     success: bool
     message: str
@@ -125,10 +132,10 @@ class ProcessingResult:
     timestamp: datetime = field(default_factory=datetime.now)
 
 
-
 @dataclass
 class ViewerState:
     """DTO for viewer state."""
+
     current_frame: int
     total_frames: int
     zoom_level: float

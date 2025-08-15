@@ -3,7 +3,7 @@ Analysis Dialog Windows
 Popup dialogs for QCA, Segmentation, and Calibration analysis
 """
 
-from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QDialogButtonBox)
+from PyQt6.QtWidgets import QDialog, QVBoxLayout, QDialogButtonBox
 from PyQt6.QtCore import Qt, pyqtSignal
 import logging
 
@@ -53,17 +53,28 @@ class CalibrationControlDialog(QDialog):
         self.setLayout(layout)
 
         # Connect signals
-        self.calibration_control_panel.calibration_confirmed.connect(self.calibration_confirmed.emit)
+        self.calibration_control_panel.calibration_confirmed.connect(
+            self.calibration_confirmed.emit
+        )
         self.calibration_control_panel.calibration_reset.connect(self.calibration_reset.emit)
         self.calibration_control_panel.calibration_loaded.connect(self.calibration_loaded.emit)
-        self.calibration_control_panel.calibration_cancelled.connect(self.calibration_cancelled.emit)
+        self.calibration_control_panel.calibration_cancelled.connect(
+            self.calibration_cancelled.emit
+        )
         self.calibration_control_panel.calibration_deleted.connect(self.calibration_deleted.emit)
 
     def keyPressEvent(self, event):
         """Pass navigation keys to parent window for playback control"""
         # Pass navigation keys to parent for playback control
-        if event.key() in [Qt.Key.Key_Left, Qt.Key.Key_Right, Qt.Key.Key_Space,
-                          Qt.Key.Key_Home, Qt.Key.Key_End, Qt.Key.Key_PageUp, Qt.Key.Key_PageDown]:
+        if event.key() in [
+            Qt.Key.Key_Left,
+            Qt.Key.Key_Right,
+            Qt.Key.Key_Space,
+            Qt.Key.Key_Home,
+            Qt.Key.Key_End,
+            Qt.Key.Key_PageUp,
+            Qt.Key.Key_PageDown,
+        ]:
             if self.parent():
                 # Pass event to parent and don't consume it
                 self.parent().keyPressEvent(event)
@@ -101,6 +112,7 @@ class CalibrationControlDialog(QDialog):
         if self.parent():
             # Use a timer to return focus after dialog is fully shown
             from PyQt6.QtCore import QTimer
+
             QTimer.singleShot(100, lambda: self.parent().setFocus())
 
     def set_calibration_info(self, calibration_factor, details):
@@ -158,16 +170,27 @@ class SegmentationDialog(QDialog):
         self.setLayout(layout)
 
         # Connect signals
-        self.segmentation_widget.segmentation_mode_changed.connect(self.segmentation_mode_changed.emit)
+        self.segmentation_widget.segmentation_mode_changed.connect(
+            self.segmentation_mode_changed.emit
+        )
         self.segmentation_widget.segmentation_completed.connect(self.segmentation_completed.emit)
-        self.segmentation_widget.overlay_settings_changed.connect(self.overlay_settings_changed.emit)
+        self.segmentation_widget.overlay_settings_changed.connect(
+            self.overlay_settings_changed.emit
+        )
         self.segmentation_widget.qca_analysis_requested.connect(self.qca_analysis_requested.emit)
 
     def keyPressEvent(self, event):
         """Pass navigation keys to parent window for playback control"""
         # Pass navigation keys to parent for playback control
-        if event.key() in [Qt.Key.Key_Left, Qt.Key.Key_Right, Qt.Key.Key_Space,
-                          Qt.Key.Key_Home, Qt.Key.Key_End, Qt.Key.Key_PageUp, Qt.Key.Key_PageDown]:
+        if event.key() in [
+            Qt.Key.Key_Left,
+            Qt.Key.Key_Right,
+            Qt.Key.Key_Space,
+            Qt.Key.Key_Home,
+            Qt.Key.Key_End,
+            Qt.Key.Key_PageUp,
+            Qt.Key.Key_PageDown,
+        ]:
             if self.parent():
                 # Pass event to parent and don't consume it
                 self.parent().keyPressEvent(event)
@@ -184,7 +207,7 @@ class SegmentationDialog(QDialog):
         self._check_current_frame_points()
 
         # Automatically activate segmentation mode when dialog opens
-        if hasattr(self.segmentation_widget, 'mode_button'):
+        if hasattr(self.segmentation_widget, "mode_button"):
             if not self.segmentation_widget.mode_button.isChecked():
                 self.segmentation_widget.mode_button.setChecked(True)
                 self.segmentation_widget.toggle_mode()
@@ -217,26 +240,27 @@ class SegmentationDialog(QDialog):
         if self.parent():
             # Use a timer to return focus after dialog is fully shown
             from PyQt6.QtCore import QTimer
+
             QTimer.singleShot(100, lambda: self.parent().setFocus())
 
         logger.info(f"Segmentation dialog positioned at ({x}, {y})")
 
     def _check_current_frame_points(self):
         """Check for existing points (tracking or GT) in current frame"""
-        if not self.parent() or not hasattr(self.parent(), 'viewer_widget'):
+        if not self.parent() or not hasattr(self.parent(), "viewer_widget"):
             return
 
         viewer = self.parent().viewer_widget
-        current_frame = viewer.current_frame_index if hasattr(viewer, 'current_frame_index') else 0
+        current_frame = viewer.current_frame_index if hasattr(viewer, "current_frame_index") else 0
 
         # Check for tracking points
         tracking_points = []
-        if hasattr(viewer, 'overlay_item') and hasattr(viewer.overlay_item, 'frame_points'):
+        if hasattr(viewer, "overlay_item") and hasattr(viewer.overlay_item, "frame_points"):
             tracking_points = viewer.overlay_item.frame_points.get(current_frame, [])
 
         # Check for segmentation points
         segmentation_points = []
-        if hasattr(self.segmentation_widget, 'user_points'):
+        if hasattr(self.segmentation_widget, "user_points"):
             segmentation_points = self.segmentation_widget.user_points
 
         # Update status in segmentation widget
@@ -260,26 +284,33 @@ class SegmentationDialog(QDialog):
             status_text = f"Found {len(tracking_points)} tracking + {len(segmentation_points)} segmentation points"
 
         # Update UI to show point status
-        if hasattr(self.segmentation_widget, 'instructions'):
+        if hasattr(self.segmentation_widget, "instructions"):
             # Save original instruction text
             original_text = self.segmentation_widget.instructions.text()
 
             # Show status temporarily
-            self.segmentation_widget.instructions.setText(f"<b>Frame {current_frame + 1}:</b> {status_text}")
-            self.segmentation_widget.instructions.setStyleSheet("font-size: 12px; color: #1976D2; font-weight: bold;")
+            self.segmentation_widget.instructions.setText(
+                f"<b>Frame {current_frame + 1}:</b> {status_text}"
+            )
+            self.segmentation_widget.instructions.setStyleSheet(
+                "font-size: 12px; color: #1976D2; font-weight: bold;"
+            )
 
             # Create a timer to restore original text after 3 seconds
             from PyQt6.QtCore import QTimer
+
             timer = QTimer()
             timer.setSingleShot(True)
             timer.timeout.connect(lambda: self._restore_instructions(original_text))
             timer.start(3000)
 
-        logger.info(f"Point check - Frame {current_frame}: {len(tracking_points)} tracking, {len(segmentation_points)} segmentation points")
+        logger.info(
+            f"Point check - Frame {current_frame}: {len(tracking_points)} tracking, {len(segmentation_points)} segmentation points"
+        )
 
     def _restore_instructions(self, original_text):
         """Restore original instruction text"""
-        if hasattr(self.segmentation_widget, 'instructions'):
+        if hasattr(self.segmentation_widget, "instructions"):
             self.segmentation_widget.instructions.setText(original_text)
             self.segmentation_widget.instructions.setStyleSheet("font-size: 12px; color: #666;")
 
@@ -333,8 +364,15 @@ class QCADialog(QDialog):
     def keyPressEvent(self, event):
         """Pass navigation keys to parent window for playback control"""
         # Pass navigation keys to parent for playback control
-        if event.key() in [Qt.Key.Key_Left, Qt.Key.Key_Right, Qt.Key.Key_Space,
-                          Qt.Key.Key_Home, Qt.Key.Key_End, Qt.Key.Key_PageUp, Qt.Key.Key_PageDown]:
+        if event.key() in [
+            Qt.Key.Key_Left,
+            Qt.Key.Key_Right,
+            Qt.Key.Key_Space,
+            Qt.Key.Key_Home,
+            Qt.Key.Key_End,
+            Qt.Key.Key_PageUp,
+            Qt.Key.Key_PageDown,
+        ]:
             if self.parent():
                 # Pass event to parent and don't consume it
                 self.parent().keyPressEvent(event)
@@ -368,6 +406,7 @@ class QCADialog(QDialog):
         if self.parent():
             # Use a timer to return focus after dialog is fully shown
             from PyQt6.QtCore import QTimer
+
             QTimer.singleShot(100, lambda: self.parent().setFocus())
 
         logger.info(f"QCA dialog positioned")
@@ -375,5 +414,3 @@ class QCADialog(QDialog):
     def start_analysis(self, segmentation_result=None):
         """Start QCA analysis"""
         self.qca_widget.start_analysis(segmentation_result)
-
-

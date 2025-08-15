@@ -9,4 +9,4 @@ from .playback_controller import PlaybackController
 from .dicom_loader import DicomLoader
 from .analysis_coordinator import AnalysisCoordinator
 
-__all__ = ['MainWindow', 'MenuManager', 'PlaybackController', 'DicomLoader', 'AnalysisCoordinator']
+__all__ = ["MainWindow", "MenuManager", "PlaybackController", "DicomLoader", "AnalysisCoordinator"]

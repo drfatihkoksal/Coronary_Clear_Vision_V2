@@ -69,7 +69,9 @@ class EKGViewerWidget(QWidget):
         self.toggle_phases_button.clicked.connect(self.toggle_cardiac_phases)
         self.toggle_phases_button.setEnabled(False)
         self.toggle_phases_button.setMinimumHeight(30)
-        self.toggle_phases_button.setStyleSheet("QPushButton { font-size: 12px; padding: 5px 10px; }")
+        self.toggle_phases_button.setStyleSheet(
+            "QPushButton { font-size: 12px; padding: 5px 10px; }"
+        )
         control_layout.addWidget(self.toggle_phases_button)
 
         # Clear markers button
@@ -84,42 +86,52 @@ class EKGViewerWidget(QWidget):
 
         # Create plot widget with custom configuration
         self.plot_widget = pg.PlotWidget()
-        self.plot_widget.setBackground('w')
+        self.plot_widget.setBackground("w")
         self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
 
         # Configure plot with minimal margins
-        self.plot_widget.setLabel('left', 'mV', units='')
-        self.plot_widget.setLabel('bottom', 'Time', units='s')
+        self.plot_widget.setLabel("left", "mV", units="")
+        self.plot_widget.setLabel("bottom", "Time", units="s")
         self.plot_widget.plotItem.setContentsMargins(0, 0, 0, 0)
 
         # Increase axis label font sizes
-        font = self.plot_widget.getAxis('left').label.font()
+        font = self.plot_widget.getAxis("left").label.font()
         font.setPointSize(12)
-        self.plot_widget.getAxis('left').label.setFont(font)
-        self.plot_widget.getAxis('left').setWidth(60)  # More space for labels
-        self.plot_widget.getAxis('left').setTickFont(font)
+        self.plot_widget.getAxis("left").label.setFont(font)
+        self.plot_widget.getAxis("left").setWidth(60)  # More space for labels
+        self.plot_widget.getAxis("left").setTickFont(font)
 
-        self.plot_widget.getAxis('bottom').label.setFont(font)
-        self.plot_widget.getAxis('bottom').setHeight(40)  # More space for labels
-        self.plot_widget.getAxis('bottom').setTickFont(font)
+        self.plot_widget.getAxis("bottom").label.setFont(font)
+        self.plot_widget.getAxis("bottom").setHeight(40)  # More space for labels
+        self.plot_widget.getAxis("bottom").setTickFont(font)
 
         # Enable mouse interaction
         self.plot_widget.scene().sigMouseClicked.connect(self.on_mouse_clicked)
 
         # Add crosshair
-        self.vline = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen('b', width=1, style=Qt.PenStyle.DashLine))
-        self.hline = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen('b', width=1, style=Qt.PenStyle.DashLine))
+        self.vline = pg.InfiniteLine(
+            angle=90, movable=False, pen=pg.mkPen("b", width=1, style=Qt.PenStyle.DashLine)
+        )
+        self.hline = pg.InfiniteLine(
+            angle=0, movable=False, pen=pg.mkPen("b", width=1, style=Qt.PenStyle.DashLine)
+        )
         self.plot_widget.addItem(self.vline)
         self.plot_widget.addItem(self.hline)
 
         # Connect proxy for mouse move
-        self.proxy = pg.SignalProxy(self.plot_widget.scene().sigMouseMoved, rateLimit=60, slot=self.on_mouse_moved)
+        self.proxy = pg.SignalProxy(
+            self.plot_widget.scene().sigMouseMoved, rateLimit=60, slot=self.on_mouse_moved
+        )
 
         layout.addWidget(self.plot_widget)
 
-    def set_ekg_data(self, data: np.ndarray, sampling_rate: float = 1000.0,
-                     r_peaks: Optional[np.ndarray] = None,
-                     quality_metrics: Optional[dict] = None):
+    def set_ekg_data(
+        self,
+        data: np.ndarray,
+        sampling_rate: float = 1000.0,
+        r_peaks: Optional[np.ndarray] = None,
+        quality_metrics: Optional[dict] = None,
+    ):
         """Set EKG data for display"""
         self.ekg_data = data
         self.sampling_rate = sampling_rate
@@ -137,9 +149,7 @@ class EKGViewerWidget(QWidget):
 
         # Plot EKG data with thicker line
         self.ekg_curve = self.plot_widget.plot(
-            self.time_data,
-            self.ekg_data,
-            pen=pg.mkPen('k', width=2)
+            self.time_data, self.ekg_data, pen=pg.mkPen("k", width=2)
         )
 
         # Plot R-peaks if available - make them editable
@@ -154,14 +164,14 @@ class EKGViewerWidget(QWidget):
                     x=[time],
                     y=[value],
                     pen=None,
-                    symbol='o',
-                    symbolBrush='r',
+                    symbol="o",
+                    symbolBrush="r",
                     symbolSize=12,
-                    symbolPen=pg.mkPen('darkred', width=2)
+                    symbolPen=pg.mkPen("darkred", width=2),
                 )
                 self.plot_widget.addItem(scatter)
                 self.r_peak_items.append(scatter)
-            
+
             # Don't emit signals for all peaks on initial load
             # Only emit when user interacts or when playing
 
@@ -181,8 +191,8 @@ class EKGViewerWidget(QWidget):
 
     def update_quality_indicator(self, quality_metrics: dict):
         """Update quality indicator based on metrics"""
-        quality_score = quality_metrics.get('quality_score', 0)
-        message = quality_metrics.get('message', '')
+        quality_score = quality_metrics.get("quality_score", 0)
+        message = quality_metrics.get("message", "")
 
         # Set color based on quality
         if quality_score >= 0.8:
@@ -242,10 +252,7 @@ class EKGViewerWidget(QWidget):
 
         # Create new marker
         self.current_time_marker = pg.InfiniteLine(
-            pos=time,
-            angle=90,
-            pen=pg.mkPen('r', width=2),
-            movable=False
+            pos=time, angle=90, pen=pg.mkPen("r", width=2), movable=False
         )
         self.plot_widget.addItem(self.current_time_marker)
 
@@ -298,7 +305,7 @@ class EKGViewerWidget(QWidget):
 
     def _display_cardiac_phases(self):
         """Display cardiac phase markers on the ECG"""
-        if not self.cardiac_phases or 'phases' not in self.cardiac_phases:
+        if not self.cardiac_phases or "phases" not in self.cardiac_phases:
             return
 
         # Clear existing phase markers
@@ -306,25 +313,25 @@ class EKGViewerWidget(QWidget):
 
         # Define colors for each phase
         phase_colors = {
-            'D2': {'color': '#4CAF50', 'name': 'End-diastole'},      # Green
-            'S1': {'color': '#2196F3', 'name': 'Early-systole'},     # Blue
-            'S2': {'color': '#FF9800', 'name': 'End-systole'},       # Orange
-            'D1': {'color': '#9C27B0', 'name': 'Mid-diastole'}       # Purple
+            "D2": {"color": "#4CAF50", "name": "End-diastole"},  # Green
+            "S1": {"color": "#2196F3", "name": "Early-systole"},  # Blue
+            "S2": {"color": "#FF9800", "name": "End-systole"},  # Orange
+            "D1": {"color": "#9C27B0", "name": "Mid-diastole"},  # Purple
         }
 
         # Plot phase markers for each cardiac cycle
-        for cycle_idx, cycle in enumerate(self.cardiac_phases['phases']):
+        for cycle_idx, cycle in enumerate(self.cardiac_phases["phases"]):
             for phase_key, phase_info in phase_colors.items():
                 if phase_key in cycle:
                     phase_data = cycle[phase_key]
 
                     # Add vertical line at phase time - now movable with thick handle
                     phase_line = pg.InfiniteLine(
-                        pos=phase_data['time'],
+                        pos=phase_data["time"],
                         angle=90,
-                        pen=pg.mkPen(phase_info['color'], width=6, style=Qt.PenStyle.DashLine),
+                        pen=pg.mkPen(phase_info["color"], width=6, style=Qt.PenStyle.DashLine),
                         movable=True,
-                        hoverPen=pg.mkPen(phase_info['color'], width=8)
+                        hoverPen=pg.mkPen(phase_info["color"], width=8),
                     )
 
                     # Store phase info in the line object
@@ -343,38 +350,34 @@ class EKGViewerWidget(QWidget):
 
                     # Add phase label at top of plot
                     if cycle_idx == 0:  # Only label first cycle to avoid clutter
-                        label = pg.TextItem(
-                            phase_key,
-                            color=phase_info['color'],
-                            anchor=(0.5, 1)
-                        )
-                        label.setPos(phase_data['time'], self._get_plot_top())
+                        label = pg.TextItem(phase_key, color=phase_info["color"], anchor=(0.5, 1))
+                        label.setPos(phase_data["time"], self._get_plot_top())
                         self.plot_widget.addItem(label)
                         self.phase_markers.append(label)
 
         # Add phase regions (systole/diastole shading)
-        for cycle_idx, cycle in enumerate(self.cardiac_phases['phases']):
-            if 'S1' in cycle and 'S2' in cycle:
+        for cycle_idx, cycle in enumerate(self.cardiac_phases["phases"]):
+            if "S1" in cycle and "S2" in cycle:
                 # Systole region (S1 to S2)
                 systole_region = pg.LinearRegionItem(
-                    [cycle['S1']['time'], cycle['S2']['time']],
-                    brush=pg.mkBrush('#FF5252', alpha=15),
+                    [cycle["S1"]["time"], cycle["S2"]["time"]],
+                    brush=pg.mkBrush("#FF5252", alpha=15),
                     movable=False,
-                    pen=pg.mkPen(None)
+                    pen=pg.mkPen(None),
                 )
                 systole_region.setZValue(-10)  # Put behind other elements
                 self.plot_widget.addItem(systole_region)
                 self.phase_markers.append(systole_region)
 
-            if 'S2' in cycle and cycle_idx < len(self.cardiac_phases['phases']) - 1:
+            if "S2" in cycle and cycle_idx < len(self.cardiac_phases["phases"]) - 1:
                 # Diastole region (S2 to next D2)
-                next_cycle = self.cardiac_phases['phases'][cycle_idx + 1]
-                if 'D2' in next_cycle:
+                next_cycle = self.cardiac_phases["phases"][cycle_idx + 1]
+                if "D2" in next_cycle:
                     diastole_region = pg.LinearRegionItem(
-                        [cycle['S2']['time'], next_cycle['D2']['time']],
-                        brush=pg.mkBrush('#448AFF', alpha=10),
+                        [cycle["S2"]["time"], next_cycle["D2"]["time"]],
+                        brush=pg.mkBrush("#448AFF", alpha=10),
                         movable=False,
-                        pen=pg.mkPen(None)
+                        pen=pg.mkPen(None),
                     )
                     diastole_region.setZValue(-10)  # Put behind other elements
                     self.plot_widget.addItem(diastole_region)
@@ -395,25 +398,25 @@ class EKGViewerWidget(QWidget):
 
     def _check_phase_hover(self, mouse_time: float):
         """Check if mouse is hovering over a phase marker"""
-        if not self.cardiac_phases or 'phases' not in self.cardiac_phases:
+        if not self.cardiac_phases or "phases" not in self.cardiac_phases:
             return
 
         # Define phase info (transition descriptions)
         phase_info = {
-            'D2': 'D2→S1: End-diastole phase - Ventricular filling complete',
-            'S1': 'S1→S2: Early-systole phase - Ventricular contraction begins',
-            'S2': 'S2→D1: End-systole phase - Ventricular contraction ends',
-            'D1': 'D1→D2: Mid-diastole phase - Ventricular relaxation and filling'
+            "D2": "D2→S1: End-diastole phase - Ventricular filling complete",
+            "S1": "S1→S2: Early-systole phase - Ventricular contraction begins",
+            "S2": "S2→D1: End-systole phase - Ventricular contraction ends",
+            "D1": "D1→D2: Mid-diastole phase - Ventricular relaxation and filling",
         }
 
         hover_tolerance = 0.01  # 10ms tolerance
         found_phase = None
 
         # Check all phases in all cycles
-        for cycle in self.cardiac_phases['phases']:
-            for phase_key in ['D2', 'S1', 'S2', 'D1']:
+        for cycle in self.cardiac_phases["phases"]:
+            for phase_key in ["D2", "S1", "S2", "D1"]:
                 if phase_key in cycle:
-                    phase_time = cycle[phase_key]['time']
+                    phase_time = cycle[phase_key]["time"]
                     if abs(mouse_time - phase_time) < hover_tolerance:
                         found_phase = phase_key
                         break
@@ -425,19 +428,19 @@ class EKGViewerWidget(QWidget):
             self.current_hover_phase = found_phase
 
             # Get phase statistics
-            stats = self.cardiac_phases.get('statistics', {})
-            info_text = phase_info.get(found_phase, '')
+            stats = self.cardiac_phases.get("statistics", {})
+            info_text = phase_info.get(found_phase, "")
 
             # Add timing info
-            if found_phase == 'D2':
-                offset = stats.get('D2_offset_ms_mean', 0)
-                info_text += f'\nOffset: {offset:.1f}ms before R-peak'
-            elif found_phase == 'S2':
-                offset = stats.get('S2_offset_ms_mean', 0)
-                info_text += f'\nOffset: {offset:.1f}ms after R-peak'
-            elif found_phase == 'D1':
-                offset = stats.get('D1_offset_ms_mean', 0)
-                info_text += f'\nOffset: {offset:.1f}ms after R-peak'
+            if found_phase == "D2":
+                offset = stats.get("D2_offset_ms_mean", 0)
+                info_text += f"\nOffset: {offset:.1f}ms before R-peak"
+            elif found_phase == "S2":
+                offset = stats.get("S2_offset_ms_mean", 0)
+                info_text += f"\nOffset: {offset:.1f}ms after R-peak"
+            elif found_phase == "D1":
+                offset = stats.get("D1_offset_ms_mean", 0)
+                info_text += f"\nOffset: {offset:.1f}ms after R-peak"
 
             # Show tooltip at cursor position
             QToolTip.showText(QCursor.pos(), info_text)
@@ -474,19 +477,19 @@ class EKGViewerWidget(QWidget):
 
     def _on_phase_moved(self, line):
         """Handle phase marker movement"""
-        if hasattr(line, 'phase_key') and hasattr(line, 'cycle_idx'):
+        if hasattr(line, "phase_key") and hasattr(line, "cycle_idx"):
             new_time = line.pos()[0]
             phase_key = line.phase_key
             cycle_idx = line.cycle_idx
 
             # Update the phase data
-            if self.cardiac_phases and cycle_idx < len(self.cardiac_phases['phases']):
-                cycle = self.cardiac_phases['phases'][cycle_idx]
+            if self.cardiac_phases and cycle_idx < len(self.cardiac_phases["phases"]):
+                cycle = self.cardiac_phases["phases"][cycle_idx]
                 if phase_key in cycle:
                     # Convert time to index
                     new_index = int(new_time * self.sampling_rate)
-                    cycle[phase_key]['time'] = new_time
-                    cycle[phase_key]['index'] = new_index
+                    cycle[phase_key]["time"] = new_time
+                    cycle[phase_key]["index"] = new_index
 
                     # Recalculate statistics would go here
 
@@ -513,10 +516,12 @@ class EKGViewerWidget(QWidget):
         menu.addSeparator()
         add_menu = menu.addMenu("Add Phase Marker")
 
-        phases = ['D2', 'S1', 'S2', 'D1']
+        phases = ["D2", "S1", "S2", "D1"]
         for phase in phases:
             action = QAction(f"Add {phase}", self)
-            action.triggered.connect(lambda checked, p=phase: self._add_phase_at_time(p, plot_pos.x()))
+            action.triggered.connect(
+                lambda checked, p=phase: self._add_phase_at_time(p, plot_pos.x())
+            )
             add_menu.addAction(action)
 
         # Add R-peak option
@@ -540,16 +545,12 @@ class EKGViewerWidget(QWidget):
         if not self.cardiac_phases:
             return None
 
-        for cycle_idx, cycle in enumerate(self.cardiac_phases['phases']):
-            for phase_key in ['D2', 'S1', 'S2', 'D1']:
+        for cycle_idx, cycle in enumerate(self.cardiac_phases["phases"]):
+            for phase_key in ["D2", "S1", "S2", "D1"]:
                 if phase_key in cycle:
-                    phase_time = cycle[phase_key]['time']
+                    phase_time = cycle[phase_key]["time"]
                     if abs(phase_time - time) < tolerance:
-                        return {
-                            'phase_key': phase_key,
-                            'cycle_idx': cycle_idx,
-                            'time': phase_time
-                        }
+                        return {"phase_key": phase_key, "cycle_idx": cycle_idx, "time": phase_time}
         return None
 
     def _delete_phase(self, phase_info):
@@ -565,10 +566,10 @@ class EKGViewerWidget(QWidget):
                 self.phase_markers.remove(marker)
 
             # Update phase data
-            if phase_info['cycle_idx'] < len(self.cardiac_phases['phases']):
-                cycle = self.cardiac_phases['phases'][phase_info['cycle_idx']]
-                if phase_info['phase_key'] in cycle:
-                    del cycle[phase_info['phase_key']]
+            if phase_info["cycle_idx"] < len(self.cardiac_phases["phases"]):
+                cycle = self.cardiac_phases["phases"][phase_info["cycle_idx"]]
+                if phase_info["phase_key"] in cycle:
+                    del cycle[phase_info["phase_key"]]
 
     def _add_phase_at_time(self, phase_key, time):
         """Add a new phase marker at given time"""
@@ -577,17 +578,17 @@ class EKGViewerWidget(QWidget):
 
         # Find which cycle this time belongs to
         cycle_idx = 0
-        for i, cycle in enumerate(self.cardiac_phases['phases']):
-            if 'S1' in cycle and time >= cycle['S1']['time']:
+        for i, cycle in enumerate(self.cardiac_phases["phases"]):
+            if "S1" in cycle and time >= cycle["S1"]["time"]:
                 cycle_idx = i
 
         # Add to phase data
-        if cycle_idx < len(self.cardiac_phases['phases']):
-            cycle = self.cardiac_phases['phases'][cycle_idx]
+        if cycle_idx < len(self.cardiac_phases["phases"]):
+            cycle = self.cardiac_phases["phases"][cycle_idx]
             cycle[phase_key] = {
-                'index': int(time * self.sampling_rate),
-                'time': time,
-                'phase_name': phase_key
+                "index": int(time * self.sampling_rate),
+                "time": time,
+                "phase_name": phase_key,
             }
 
             # Refresh display
@@ -631,6 +632,7 @@ class EKGViewerWidget(QWidget):
             # Recalculate cardiac phases if they exist
             if self.cardiac_phases is not None:
                 from ..core.cardiac_phase_detector import CardiacPhaseDetector
+
                 phase_detector = CardiacPhaseDetector(self.sampling_rate)
                 self.cardiac_phases = phase_detector.detect_phases(self.ekg_data, self.r_peaks)
                 if self.show_phases:

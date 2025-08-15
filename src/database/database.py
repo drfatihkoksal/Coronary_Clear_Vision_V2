@@ -8,9 +8,8 @@ and schema management for the coronary analysis system.
 import sqlite3
 import logging
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 from contextlib import contextmanager
-import json
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -18,11 +17,11 @@ logger = logging.getLogger(__name__)
 
 class DatabaseManager:
     """Manages database connections and schema"""
-    
+
     def __init__(self, db_path: str = "coronary_analysis.db"):
         """
         Initialize database manager
-        
+
         Args:
             db_path: Path to SQLite database file
         """
@@ -30,7 +29,7 @@ class DatabaseManager:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.connection: Optional[sqlite3.Connection] = None
         self._initialize_database()
-    
+
     def _initialize_database(self):
         """Initialize database and create tables if needed"""
         try:
@@ -41,7 +40,7 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
             raise
-    
+
     @contextmanager
     def get_connection(self):
         """Get database connection context manager"""
@@ -56,12 +55,13 @@ class DatabaseManager:
             raise e
         finally:
             conn.close()
-    
+
     def _create_tables(self, conn: sqlite3.Connection):
         """Create all database tables"""
-        
+
         # Patients table
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS patients (
                 patient_id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -75,10 +75,12 @@ class DatabaseManager:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """)
-        
+        """
+        )
+
         # Studies table
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS studies (
                 study_id TEXT PRIMARY KEY,
                 patient_id TEXT NOT NULL,
@@ -96,10 +98,12 @@ class DatabaseManager:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (patient_id) REFERENCES patients(patient_id) ON DELETE CASCADE
             )
-        """)
-        
+        """
+        )
+
         # Analyses table
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS analyses (
                 analysis_id TEXT PRIMARY KEY,
                 study_id TEXT NOT NULL,
@@ -118,10 +122,12 @@ class DatabaseManager:
                 FOREIGN KEY (study_id) REFERENCES studies(study_id) ON DELETE CASCADE,
                 FOREIGN KEY (patient_id) REFERENCES patients(patient_id) ON DELETE CASCADE
             )
-        """)
-        
+        """
+        )
+
         # Calibration data table
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS calibration_data (
                 calibration_id TEXT PRIMARY KEY,
                 analysis_id TEXT NOT NULL,
@@ -140,10 +146,12 @@ class DatabaseManager:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (analysis_id) REFERENCES analyses(analysis_id) ON DELETE CASCADE
             )
-        """)
-        
+        """
+        )
+
         # RWS data table
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS rws_data (
                 rws_id TEXT PRIMARY KEY,
                 analysis_id TEXT NOT NULL,
@@ -165,10 +173,12 @@ class DatabaseManager:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (analysis_id) REFERENCES analyses(analysis_id) ON DELETE CASCADE
             )
-        """)
-        
+        """
+        )
+
         # QCA data table
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS qca_data (
                 qca_id TEXT PRIMARY KEY,
                 analysis_id TEXT NOT NULL,
@@ -190,10 +200,12 @@ class DatabaseManager:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (analysis_id) REFERENCES analyses(analysis_id) ON DELETE CASCADE
             )
-        """)
-        
+        """
+        )
+
         # Frame measurements table
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS frame_measurements (
                 measurement_id TEXT PRIMARY KEY,
                 analysis_id TEXT NOT NULL,
@@ -211,10 +223,12 @@ class DatabaseManager:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (analysis_id) REFERENCES analyses(analysis_id) ON DELETE CASCADE
             )
-        """)
-        
+        """
+        )
+
         # Analysis snapshots table for versioning
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS analysis_snapshots (
                 snapshot_id TEXT PRIMARY KEY,
                 analysis_id TEXT NOT NULL,
@@ -224,10 +238,12 @@ class DatabaseManager:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (analysis_id) REFERENCES analyses(analysis_id) ON DELETE CASCADE
             )
-        """)
-        
+        """
+        )
+
         # Export history table
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS export_history (
                 export_id TEXT PRIMARY KEY,
                 analysis_id TEXT NOT NULL,
@@ -238,10 +254,12 @@ class DatabaseManager:
                 export_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (analysis_id) REFERENCES analyses(analysis_id) ON DELETE CASCADE
             )
-        """)
-        
+        """
+        )
+
         # Enhanced Calibration table with all measurement details
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS calibration_measurements (
                 measurement_id TEXT PRIMARY KEY,
                 analysis_id TEXT NOT NULL,
@@ -303,10 +321,12 @@ class DatabaseManager:
                 FOREIGN KEY (analysis_id) REFERENCES analyses(analysis_id) ON DELETE CASCADE,
                 FOREIGN KEY (study_id) REFERENCES studies(study_id) ON DELETE CASCADE
             )
-        """)
-        
+        """
+        )
+
         # DICOM Metadata table
-        conn.execute("""
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS dicom_metadata (
                 metadata_id TEXT PRIMARY KEY,
                 study_id TEXT NOT NULL,
@@ -473,109 +493,159 @@ class DatabaseManager:
                 
                 FOREIGN KEY (study_id) REFERENCES studies(study_id) ON DELETE CASCADE
             )
-        """)
-        
+        """
+        )
+
         logger.info("Database tables created successfully")
-    
+
     def _create_indexes(self, conn: sqlite3.Connection):
         """Create database indexes for performance"""
-        
+
         # Patient indexes
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_patients_mrn ON patients(medical_record_number)")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_patients_mrn ON patients(medical_record_number)"
+        )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_patients_name ON patients(name)")
-        
+
         # Study indexes
         conn.execute("CREATE INDEX IF NOT EXISTS idx_studies_patient ON studies(patient_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_studies_date ON studies(study_date)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_studies_uid ON studies(study_instance_uid)")
-        
+
         # Analysis indexes
         conn.execute("CREATE INDEX IF NOT EXISTS idx_analyses_study ON analyses(study_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_analyses_patient ON analyses(patient_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_analyses_type ON analyses(analysis_type)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_analyses_vessel ON analyses(vessel)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_analyses_date ON analyses(analysis_date)")
-        
+
         # Data table indexes
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_calibration_analysis ON calibration_data(analysis_id)")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_calibration_analysis ON calibration_data(analysis_id)"
+        )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_rws_analysis ON rws_data(analysis_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_rws_risk_level ON rws_data(risk_level)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_rws_percentage ON rws_data(rws_percentage)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_qca_analysis ON qca_data(analysis_id)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_qca_frame ON qca_data(analysis_id, frame_number)")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_qca_frame ON qca_data(analysis_id, frame_number)"
+        )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_qca_stenosis ON qca_data(stenosis_percentage)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_measurements_analysis ON frame_measurements(analysis_id)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_measurements_frame ON frame_measurements(analysis_id, frame_number)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_measurements_cardiac_phase ON frame_measurements(cardiac_phase)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_measurements_outlier ON frame_measurements(outlier_detected)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_snapshots_analysis ON analysis_snapshots(analysis_id)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_snapshots_type ON analysis_snapshots(snapshot_type)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_export_analysis ON export_history(analysis_id)")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_measurements_analysis ON frame_measurements(analysis_id)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_measurements_frame ON frame_measurements(analysis_id, frame_number)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_measurements_cardiac_phase ON frame_measurements(cardiac_phase)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_measurements_outlier ON frame_measurements(outlier_detected)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_snapshots_analysis ON analysis_snapshots(analysis_id)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_snapshots_type ON analysis_snapshots(snapshot_type)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_export_analysis ON export_history(analysis_id)"
+        )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_export_date ON export_history(export_date)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_export_format ON export_history(export_format)")
-        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_export_format ON export_history(export_format)"
+        )
+
         # Enhanced calibration table indexes
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_calibration_measurements_analysis ON calibration_measurements(analysis_id)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_calibration_measurements_study ON calibration_measurements(study_id)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_calibration_measurements_type ON calibration_measurements(measurement_type)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_calibration_measurements_date ON calibration_measurements(created_at)")
-        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_calibration_measurements_analysis ON calibration_measurements(analysis_id)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_calibration_measurements_study ON calibration_measurements(study_id)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_calibration_measurements_type ON calibration_measurements(measurement_type)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_calibration_measurements_date ON calibration_measurements(created_at)"
+        )
+
         # DICOM metadata indexes
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_dicom_metadata_study ON dicom_metadata(study_id)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_dicom_metadata_patient ON dicom_metadata(patient_id)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_dicom_metadata_study_uid ON dicom_metadata(study_instance_uid)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_dicom_metadata_series_uid ON dicom_metadata(series_instance_uid)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_dicom_metadata_modality ON dicom_metadata(modality)")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_dicom_metadata_date ON dicom_metadata(study_date)")
-        
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_dicom_metadata_study ON dicom_metadata(study_id)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_dicom_metadata_patient ON dicom_metadata(patient_id)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_dicom_metadata_study_uid ON dicom_metadata(study_instance_uid)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_dicom_metadata_series_uid ON dicom_metadata(series_instance_uid)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_dicom_metadata_modality ON dicom_metadata(modality)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_dicom_metadata_date ON dicom_metadata(study_date)"
+        )
+
         logger.info("Database indexes created successfully")
-    
+
     def backup_database(self, backup_path: Optional[str] = None) -> str:
         """
         Create a backup of the database
-        
+
         Args:
             backup_path: Optional custom backup path
-            
+
         Returns:
             Path to backup file
         """
         if backup_path is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_path = f"coronary_analysis_backup_{timestamp}.db"
-        
+
         backup_path = Path(backup_path)
         backup_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         with self.get_connection() as conn:
             backup_conn = sqlite3.connect(str(backup_path))
             conn.backup(backup_conn)
             backup_conn.close()
-        
+
         logger.info(f"Database backed up to {backup_path}")
         return str(backup_path)
-    
+
     def vacuum(self):
         """Vacuum database to reclaim space and optimize"""
         with self.get_connection() as conn:
             conn.execute("VACUUM")
         logger.info("Database vacuumed successfully")
-    
+
     def get_statistics(self) -> Dict[str, int]:
         """Get database statistics"""
         stats = {}
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            
+
             tables = [
-                'patients', 'studies', 'analyses', 'calibration_data',
-                'rws_data', 'qca_data', 'frame_measurements',
-                'analysis_snapshots', 'export_history',
-                'calibration_measurements', 'dicom_metadata'
+                "patients",
+                "studies",
+                "analyses",
+                "calibration_data",
+                "rws_data",
+                "qca_data",
+                "frame_measurements",
+                "analysis_snapshots",
+                "export_history",
+                "calibration_measurements",
+                "dicom_metadata",
             ]
-            
+
             for table in tables:
                 cursor.execute(f"SELECT COUNT(*) FROM {table}")
                 stats[table] = cursor.fetchone()[0]
-        
+
         return stats

@@ -6,11 +6,8 @@ Geriye dönük uyumluluk için eski API korunmuştur.
 """
 
 # Refactored versiyonu import et ve RWSWidget olarak kullan
-from src.ui.rws_widget_refactored import RWSWidgetRefactored as RWSWidget
 
 # Geriye dönük uyumluluk için eski import'ları koru
-from PyQt6.QtCore import pyqtSignal
-from typing import Dict, List, Optional
 import logging
 
 logger = logging.getLogger(__name__)

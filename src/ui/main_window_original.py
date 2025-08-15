@@ -14,17 +14,29 @@ from typing import Optional
 import numpy as np
 from PyQt6.QtCore import QSettings, Qt, QTimer
 from PyQt6.QtGui import QAction, QFont, QKeySequence
-from PyQt6.QtWidgets import (QCheckBox, QDialog, QFileDialog, QGroupBox,
-                             QHBoxLayout, QLabel, QMainWindow, QMenu,
-                             QMessageBox, QPushButton, QScrollArea, QSlider,
-                             QStatusBar, QTextEdit, QToolBox, QVBoxLayout,
-                             QWidget, QProgressDialog, QStackedWidget, QSizePolicy)
+from PyQt6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QMenu,
+    QMessageBox,
+    QPushButton,
+    QSlider,
+    QStatusBar,
+    QVBoxLayout,
+    QWidget,
+    QProgressDialog,
+    QStackedWidget,
+    QSizePolicy,
+)
 
 from ..analysis.qca_analysis import QCAAnalysis as QCAAnalyzer
 from ..core.dicom_parser import DicomParser
 from ..core.dicom_folder_loader import DicomFolderLoader, DicomSeries
 from ..core.ekg_parser import EKGParser
-from .analysis_dialogs import QCADialog, SegmentationDialog
 from .activity_bar import ActivityBar
 from .calibration_angiopy_widget import CalibrationAngioPyWidget
 from .ekg_viewer_widget import EKGViewerWidget
@@ -44,10 +56,10 @@ class MainWindow(QMainWindow):
         self.qca_analyzer = QCAAnalyzer()
         # Enable advanced diameter measurement for better accuracy
         self.qca_analyzer.use_advanced_diameter = False
-        
+
         # Global reference diameter (calculated after sequential processing)
         self.global_reference_diameter = None
-        
+
         self.current_file: Optional[Path] = None
         self.calibration_factor: Optional[float] = None  # User calibration
         self.fallback_calibration: Optional[float] = None  # From DICOM metadata
@@ -74,9 +86,9 @@ class MainWindow(QMainWindow):
 
         # Initialize AngioPy segmentation model using singleton
         from ..core.model_manager import ModelManager
+
         self.model_manager = ModelManager.instance()
         self.segmentation_model = self.model_manager.get_segmentation_model(auto_download=True)
-
 
         self.init_ui()
         self.load_settings()
@@ -87,7 +99,6 @@ class MainWindow(QMainWindow):
 
         # Get available screen geometry
         from PyQt6.QtWidgets import QApplication
-        from PyQt6.QtCore import QRect
 
         # Get primary screen
         screen = QApplication.primaryScreen()
@@ -114,12 +125,14 @@ class MainWindow(QMainWindow):
 
         # Set application-wide font (optimized for HD displays)
         from PyQt6.QtGui import QFont
+
         app_font = QFont()
         app_font.setPointSize(11)  # Slightly larger for HD displays
         self.setFont(app_font)
 
         # Set application style
-        self.setStyleSheet("""
+        self.setStyleSheet(
+            """
             QTabBar::tab {
                 background-color: #E3F2FD;
                 color: #1976D2;
@@ -134,7 +147,8 @@ class MainWindow(QMainWindow):
             QTabBar::tab:hover {
                 background-color: #BBDEFB;
             }
-        """)
+        """
+        )
 
         # Set focus policy to ensure keyboard events are captured
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -234,7 +248,6 @@ class MainWindow(QMainWindow):
         # Create menus
         self.create_menus()
 
-
         # Create status bar
         self.status_bar = QStatusBar()
         self.status_bar.setStyleSheet("QStatusBar { font-size: 11px; }")  # Reduced font size
@@ -243,6 +256,7 @@ class MainWindow(QMainWindow):
 
         # Preload AngioPy model asynchronously after UI is ready
         from ..core.model_manager import ModelManager
+
         model_manager = ModelManager.instance()
 
         def model_progress(status: str, percent: int):
@@ -251,10 +265,7 @@ class MainWindow(QMainWindow):
             else:
                 self.update_status(status)
 
-        model_manager.preload_model_async(
-            auto_download=True,
-            progress_callback=model_progress
-        )
+        model_manager.preload_model_async(auto_download=True, progress_callback=model_progress)
         self.update_status("Loading AngioPy model in background...")
 
         # Connect signals
@@ -264,10 +275,14 @@ class MainWindow(QMainWindow):
         self.ekg_viewer.time_clicked.connect(self.on_ekg_time_clicked)
 
         # Connect segmentation signal (will be used when segmentation mode is active)
-        self.viewer_widget.segmentation_point_clicked.connect(self.on_viewer_segmentation_point_clicked)
+        self.viewer_widget.segmentation_point_clicked.connect(
+            self.on_viewer_segmentation_point_clicked
+        )
 
         # Connect calibration signal
-        self.viewer_widget.calibration_point_clicked.connect(self.on_viewer_calibration_point_clicked)
+        self.viewer_widget.calibration_point_clicked.connect(
+            self.on_viewer_calibration_point_clicked
+        )
 
     def create_navigation_widget(self) -> QWidget:
         """Create frame navigation controls"""
@@ -286,7 +301,8 @@ class MainWindow(QMainWindow):
         self.frame_slider.setFixedWidth(160)  # Reduced by 20% (200 * 0.8)
         self.frame_slider.valueChanged.connect(self.on_frame_changed)
         self.frame_slider.setEnabled(False)
-        self.frame_slider.setStyleSheet("""
+        self.frame_slider.setStyleSheet(
+            """
             QSlider::groove:horizontal {
                 height: 10px;
                 background: #d3d3d3;
@@ -299,7 +315,8 @@ class MainWindow(QMainWindow):
                 border-radius: 10px;
                 margin: -5px 0;
             }
-        """)
+        """
+        )
         layout.addWidget(self.frame_slider)
 
         # Frame label
@@ -316,7 +333,8 @@ class MainWindow(QMainWindow):
         self.prev_projection_button.setToolTip("Previous Projection")
         self.prev_projection_button.clicked.connect(self.previous_projection)
         self.prev_projection_button.setEnabled(False)
-        self.prev_projection_button.setStyleSheet("""
+        self.prev_projection_button.setStyleSheet(
+            """
             QPushButton {
                 font-size: 16px;
                 background-color: #f0f0f0;
@@ -336,7 +354,8 @@ class MainWindow(QMainWindow):
                 color: #999999;
                 border: 1px solid #dddddd;
             }
-        """)
+        """
+        )
         layout.addWidget(self.prev_projection_button)
 
         # Previous frame button
@@ -345,7 +364,8 @@ class MainWindow(QMainWindow):
         self.prev_frame_button.setToolTip("Previous Frame")
         self.prev_frame_button.clicked.connect(self.previous_frame)
         self.prev_frame_button.setEnabled(False)
-        self.prev_frame_button.setStyleSheet("""
+        self.prev_frame_button.setStyleSheet(
+            """
             QPushButton {
                 font-size: 18px;
                 font-weight: bold;
@@ -366,7 +386,8 @@ class MainWindow(QMainWindow):
                 color: #999999;
                 border: 1px solid #dddddd;
             }
-        """)
+        """
+        )
         layout.addWidget(self.prev_frame_button)
 
         # Play/Pause button
@@ -375,7 +396,8 @@ class MainWindow(QMainWindow):
         self.play_button.setToolTip("Play/Pause")
         self.play_button.clicked.connect(self.toggle_play)
         self.play_button.setEnabled(False)
-        self.play_button.setStyleSheet("""
+        self.play_button.setStyleSheet(
+            """
             QPushButton {
                 font-size: 14px;
                 font-weight: bold;
@@ -396,7 +418,8 @@ class MainWindow(QMainWindow):
                 color: #999999;
                 border: 1px solid #dddddd;
             }
-        """)
+        """
+        )
         layout.addWidget(self.play_button)
 
         # Next frame button
@@ -405,7 +428,8 @@ class MainWindow(QMainWindow):
         self.next_frame_button.setToolTip("Next Frame")
         self.next_frame_button.clicked.connect(self.next_frame)
         self.next_frame_button.setEnabled(False)
-        self.next_frame_button.setStyleSheet("""
+        self.next_frame_button.setStyleSheet(
+            """
             QPushButton {
                 font-size: 16px;
                 background-color: #f0f0f0;
@@ -425,7 +449,8 @@ class MainWindow(QMainWindow):
                 color: #999999;
                 border: 1px solid #dddddd;
             }
-        """)
+        """
+        )
         layout.addWidget(self.next_frame_button)
 
         # Next projection button
@@ -434,7 +459,8 @@ class MainWindow(QMainWindow):
         self.next_projection_button.setToolTip("Next Projection")
         self.next_projection_button.clicked.connect(self.next_projection)
         self.next_projection_button.setEnabled(False)
-        self.next_projection_button.setStyleSheet("""
+        self.next_projection_button.setStyleSheet(
+            """
             QPushButton {
                 font-size: 16px;
                 background-color: #f0f0f0;
@@ -454,7 +480,8 @@ class MainWindow(QMainWindow):
                 color: #999999;
                 border: 1px solid #dddddd;
             }
-        """)
+        """
+        )
         layout.addWidget(self.next_projection_button)
 
         # Projection selection button
@@ -463,7 +490,8 @@ class MainWindow(QMainWindow):
         self.projection_select_button.setToolTip("Select Projection")
         self.projection_select_button.clicked.connect(self.show_projection_dialog)
         self.projection_select_button.setEnabled(False)
-        self.projection_select_button.setStyleSheet("""
+        self.projection_select_button.setStyleSheet(
+            """
             QPushButton {
                 font-size: 14px;
                 background-color: #f0f0f0;
@@ -483,7 +511,8 @@ class MainWindow(QMainWindow):
                 color: #999999;
                 border: 1px solid #dddddd;
             }
-        """)
+        """
+        )
         layout.addWidget(self.projection_select_button)
 
         # Add separator
@@ -496,7 +525,9 @@ class MainWindow(QMainWindow):
         self.track_backward_button.setToolTip("Track Points to Previous Frame")
         self.track_backward_button.clicked.connect(self.track_backward)
         self.track_backward_button.setEnabled(False)
-        self.track_backward_button.setStyleSheet("QPushButton { font-size: 12px; font-weight: bold; }")
+        self.track_backward_button.setStyleSheet(
+            "QPushButton { font-size: 12px; font-weight: bold; }"
+        )
         layout.addWidget(self.track_backward_button)
 
         # Track label
@@ -511,9 +542,10 @@ class MainWindow(QMainWindow):
         self.track_forward_button.setToolTip("Track Points to Next Frame")
         self.track_forward_button.clicked.connect(self.track_forward)
         self.track_forward_button.setEnabled(False)
-        self.track_forward_button.setStyleSheet("QPushButton { font-size: 12px; font-weight: bold; }")
+        self.track_forward_button.setStyleSheet(
+            "QPushButton { font-size: 12px; font-weight: bold; }"
+        )
         layout.addWidget(self.track_forward_button)
-
 
         # Track All button moved to left panel
 
@@ -522,7 +554,8 @@ class MainWindow(QMainWindow):
     def create_content_panel(self) -> QStackedWidget:
         """Create VSCode-style content panel with stacked widgets"""
         stack = QStackedWidget()
-        stack.setStyleSheet("""
+        stack.setStyleSheet(
+            """
             QStackedWidget {
                 background-color: #f5f5f5;
                 border: 1px solid #e0e0e0;
@@ -565,7 +598,8 @@ class MainWindow(QMainWindow):
             QCheckBox {
                 color: #333333;
             }
-        """)
+        """
+        )
 
         # Initialize analysis widgets
         self._init_analysis_widgets()
@@ -575,10 +609,14 @@ class MainWindow(QMainWindow):
 
         # 1. Calibration panel
         calibration_container = QWidget()
-        calibration_container.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        calibration_container.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred
+        )
         calibration_layout = QVBoxLayout(calibration_container)
         calibration_layout.setContentsMargins(10, 10, 10, 10)
-        calibration_layout.addWidget(QLabel("CALIBRATION", styleSheet="font-weight: bold; font-size: 12px;"))
+        calibration_layout.addWidget(
+            QLabel("CALIBRATION", styleSheet="font-weight: bold; font-size: 12px;")
+        )
         calibration_layout.addWidget(self.calibration_widget)
         calibration_layout.addStretch()
         self.panel_indices["calibration"] = stack.addWidget(calibration_container)
@@ -588,9 +626,13 @@ class MainWindow(QMainWindow):
         tracking_layout = QVBoxLayout(tracking_widget)
         tracking_layout.setContentsMargins(10, 10, 10, 10)
 
-        tracking_layout.addWidget(QLabel("TRACKING", styleSheet="font-weight: bold; font-size: 12px;"))
+        tracking_layout.addWidget(
+            QLabel("TRACKING", styleSheet="font-weight: bold; font-size: 12px;")
+        )
 
-        tracking_info = QLabel("Click on the angiogram to add\ntracking points for vessels\n(unlimited points - 1, 2, 3, 4+ supported)")
+        tracking_info = QLabel(
+            "Click on the angiogram to add\ntracking points for vessels\n(unlimited points - 1, 2, 3, 4+ supported)"
+        )
         tracking_info.setWordWrap(True)
         tracking_layout.addWidget(tracking_info)
 
@@ -607,7 +649,8 @@ class MainWindow(QMainWindow):
         self.track_all_button.setMinimumHeight(40)
         self.track_all_button.setEnabled(False)
         self.track_all_button.clicked.connect(self.track_all_frames)
-        self.track_all_button.setStyleSheet("""
+        self.track_all_button.setStyleSheet(
+            """
             QPushButton { 
                 font-size: 14px;
                 font-weight: bold;
@@ -623,8 +666,11 @@ class MainWindow(QMainWindow):
                 background-color: #B0BEC5;
                 color: #ECEFF1;
             }
-        """)
-        self.track_all_button.setToolTip("Track points through all frames and start sequential analysis")
+        """
+        )
+        self.track_all_button.setToolTip(
+            "Track points through all frames and start sequential analysis"
+        )
         tracking_layout.addWidget(self.track_all_button)
 
         # Removed centerline interpolation toggle - always use original length
@@ -636,7 +682,8 @@ class MainWindow(QMainWindow):
         # Add "Proceed to Analysis" button (hidden by default)
         self.proceed_to_analysis_btn = QPushButton("📊 Proceed to Analysis")
         self.proceed_to_analysis_btn.setMinimumHeight(35)
-        self.proceed_to_analysis_btn.setStyleSheet("""
+        self.proceed_to_analysis_btn.setStyleSheet(
+            """
             QPushButton {
                 background-color: #4CAF50;
                 color: white;
@@ -646,7 +693,8 @@ class MainWindow(QMainWindow):
             QPushButton:hover {
                 background-color: #45a049;
             }
-        """)
+        """
+        )
         self.proceed_to_analysis_btn.clicked.connect(self.on_proceed_to_analysis)
         self.proceed_to_analysis_btn.setVisible(False)
         tracking_layout.addWidget(self.proceed_to_analysis_btn)
@@ -658,7 +706,9 @@ class MainWindow(QMainWindow):
         segmentation_container = QWidget()
         segmentation_layout = QVBoxLayout(segmentation_container)
         segmentation_layout.setContentsMargins(10, 10, 10, 10)
-        segmentation_layout.addWidget(QLabel("SEGMENTATION", styleSheet="font-weight: bold; font-size: 12px;"))
+        segmentation_layout.addWidget(
+            QLabel("SEGMENTATION", styleSheet="font-weight: bold; font-size: 12px;")
+        )
         segmentation_layout.addWidget(self.segmentation_widget)
         segmentation_layout.addStretch()
         self.panel_indices["segmentation"] = stack.addWidget(segmentation_container)
@@ -668,7 +718,9 @@ class MainWindow(QMainWindow):
         qca_layout = QVBoxLayout(qca_container)
         qca_layout.setContentsMargins(5, 5, 5, 5)
         qca_layout.setSpacing(5)
-        qca_layout.addWidget(QLabel("QCA ANALYSIS", styleSheet="font-weight: bold; font-size: 12px;"))
+        qca_layout.addWidget(
+            QLabel("QCA ANALYSIS", styleSheet="font-weight: bold; font-size: 12px;")
+        )
         qca_layout.addWidget(self.qca_widget, 1)  # Add stretch factor to fill available space
         self.panel_indices["qca"] = stack.addWidget(qca_container)
 
@@ -677,7 +729,9 @@ class MainWindow(QMainWindow):
         batch_layout = QVBoxLayout(batch_widget)
         batch_layout.setContentsMargins(10, 10, 10, 10)
 
-        batch_layout.addWidget(QLabel("BATCH PROCESSING", styleSheet="font-weight: bold; font-size: 12px;"))
+        batch_layout.addWidget(
+            QLabel("BATCH PROCESSING", styleSheet="font-weight: bold; font-size: 12px;")
+        )
 
         seq_btn = QPushButton("Start Sequential Processing")
         seq_btn.setMinimumHeight(35)
@@ -690,7 +744,6 @@ class MainWindow(QMainWindow):
 
         batch_layout.addStretch()
         self.panel_indices["batch"] = stack.addWidget(batch_widget)
-
 
         # 7. Export panel
         export_widget = QWidget()
@@ -707,7 +760,8 @@ class MainWindow(QMainWindow):
 
         export_xlsx_btn = QPushButton("Export Report as Excel (XLSX)")
         export_xlsx_btn.setMinimumHeight(30)
-        export_xlsx_btn.setStyleSheet("""
+        export_xlsx_btn.setStyleSheet(
+            """
             QPushButton { 
                 background-color: #4CAF50; 
                 color: white; 
@@ -718,7 +772,8 @@ class MainWindow(QMainWindow):
             QPushButton:hover { 
                 background-color: #45a049; 
             }
-        """)
+        """
+        )
         export_xlsx_btn.clicked.connect(lambda: self.export_analysis_report("xlsx"))
         export_layout.addWidget(export_xlsx_btn)
 
@@ -769,7 +824,7 @@ class MainWindow(QMainWindow):
 
             # Calculate the actual content width
             # Use layout's content width if available
-            if hasattr(current_widget, 'layout') and current_widget.layout():
+            if hasattr(current_widget, "layout") and current_widget.layout():
                 layout = current_widget.layout()
                 content_width = layout.sizeHint().width()
                 min_content_width = layout.minimumSize().width()
@@ -778,7 +833,9 @@ class MainWindow(QMainWindow):
                 min_content_width = min_size_hint.width()
 
             # Use the larger of the two, with some padding
-            final_min_width = max(content_width, min_content_width) + 40  # 20px padding on each side
+            final_min_width = (
+                max(content_width, min_content_width) + 40
+            )  # 20px padding on each side
 
             # Ensure reasonable bounds
             final_min_width = max(final_min_width, 350)  # At least 350px
@@ -805,12 +862,15 @@ class MainWindow(QMainWindow):
         if self.current_mode and self.current_mode != mode:
             if self.current_mode == "calibration":
                 # Deactivate calibration widget
-                if hasattr(self.calibration_widget, 'deactivate'):
+                if hasattr(self.calibration_widget, "deactivate"):
                     self.calibration_widget.deactivate()
             elif self.current_mode == "tracking":
                 self.viewer_widget.set_tracking_enabled(False)
             elif self.current_mode == "segmentation":
-                if hasattr(self.segmentation_widget, 'mode_button') and self.segmentation_widget.mode_button.isChecked():
+                if (
+                    hasattr(self.segmentation_widget, "mode_button")
+                    and self.segmentation_widget.mode_button.isChecked()
+                ):
                     self.segmentation_widget.mode_button.setChecked(False)
                     self.segmentation_widget.toggle_mode()
 
@@ -818,13 +878,19 @@ class MainWindow(QMainWindow):
         if mode == "calibration":
             # Automatically enable calibration mode
             self.calibration_widget.toggle_mode()
-            if hasattr(self.calibration_widget, 'mode_button') and not self.calibration_widget.mode_button.isChecked():
+            if (
+                hasattr(self.calibration_widget, "mode_button")
+                and not self.calibration_widget.mode_button.isChecked()
+            ):
                 self.calibration_widget.mode_button.setChecked(True)
                 self.calibration_widget.toggle_mode()
         elif mode == "tracking":
             self.viewer_widget.set_tracking_enabled(True)
         elif mode == "segmentation":
-            if hasattr(self.segmentation_widget, 'mode_button') and not self.segmentation_widget.mode_button.isChecked():
+            if (
+                hasattr(self.segmentation_widget, "mode_button")
+                and not self.segmentation_widget.mode_button.isChecked()
+            ):
                 self.segmentation_widget.mode_button.setChecked(True)
                 self.segmentation_widget.toggle_mode()
             # Set frame range
@@ -833,15 +899,22 @@ class MainWindow(QMainWindow):
         elif mode == "qca":
             # Pass calibration to QCA widget if available
             if self.calibration_factor:
-                self.qca_widget.set_calibration(self.calibration_factor,
-                                               getattr(self, 'calibration_details', None))
+                self.qca_widget.set_calibration(
+                    self.calibration_factor, getattr(self, "calibration_details", None)
+                )
 
             # Display current frame's QCA results if available
-            current_frame = self.viewer_widget.current_frame_index if hasattr(self.viewer_widget, 'current_frame_index') else 0
-            if (hasattr(self.viewer_widget, 'frame_qca_results') and
-                current_frame in self.viewer_widget.frame_qca_results):
+            current_frame = (
+                self.viewer_widget.current_frame_index
+                if hasattr(self.viewer_widget, "current_frame_index")
+                else 0
+            )
+            if (
+                hasattr(self.viewer_widget, "frame_qca_results")
+                and current_frame in self.viewer_widget.frame_qca_results
+            ):
                 qca_result = self.viewer_widget.frame_qca_results[current_frame]
-                if qca_result and qca_result.get('success'):
+                if qca_result and qca_result.get("success"):
                     self.qca_widget.display_frame_results(current_frame, qca_result)
 
         # Update current mode
@@ -857,18 +930,26 @@ class MainWindow(QMainWindow):
         self.calibration_widget.calibration_completed.connect(
             lambda factor, details: self.on_calibration_completed_widget(factor, details)
         )
-        self.calibration_widget.overlay_settings_changed.connect(self.on_calibration_overlay_changed)
+        self.calibration_widget.overlay_settings_changed.connect(
+            self.on_calibration_overlay_changed
+        )
 
         # Segmentation widget signals
-        self.segmentation_widget.segmentation_mode_changed.connect(self.on_segmentation_mode_changed)
+        self.segmentation_widget.segmentation_mode_changed.connect(
+            self.on_segmentation_mode_changed
+        )
         self.segmentation_widget.segmentation_completed.connect(self.update_segmentation_overlay)
-        self.segmentation_widget.overlay_settings_changed.connect(self.update_segmentation_overlay_settings)
+        self.segmentation_widget.overlay_settings_changed.connect(
+            self.update_segmentation_overlay_settings
+        )
         self.segmentation_widget.qca_analysis_requested.connect(self.start_qca_from_segmentation)
 
         # QCA widget signals
         self.qca_widget.qca_started.connect(lambda: None)  # Not currently used
         self.qca_widget.qca_completed.connect(self.update_qca_overlay)
-        self.qca_widget.overlay_changed.connect(lambda enabled, settings: self.update_qca_overlay_settings(settings))
+        self.qca_widget.overlay_changed.connect(
+            lambda enabled, settings: self.update_qca_overlay_settings(settings)
+        )
         self.qca_widget.calibration_requested.connect(self.start_calibration)
 
     def open_dicom(self):
@@ -877,25 +958,50 @@ class MainWindow(QMainWindow):
             self,
             "Open DICOM File",
             str(Path.home()),
-            "All Files (*);;DICOM Files (*.dcm *.DCM);;DICOMDIR Files (DICOMDIR)"
+            "All Files (*);;DICOM Files (*.dcm *.DCM);;DICOMDIR Files (DICOMDIR)",
         )
 
         if file_path:
             self.load_dicom_file(file_path)
 
-    def open_dicom_folder(self):
-        """Open DICOM folder dialog"""
-        folder_path = QFileDialog.getExistingDirectory(
-            self,
-            "Select DICOM Folder",
-            str(Path.home()),
-            QFileDialog.Option.ShowDirsOnly
-        )
+    def restart_with_dicom(self, dicom_path: str, is_folder: bool = False):
+        """DEPRECATED: This method is no longer used. 
+        DICOM loading now happens without restarting the application.
+        Kept for backward compatibility."""
+        logger.warning("restart_with_dicom called but is deprecated. Using direct loading instead.")
+        
+        # Instead of restarting, clear and reload
+        self.clear_all_analysis()
+        
+        if is_folder:
+            self.load_dicom_folder_direct(dicom_path)
+        else:
+            self.load_dicom_file(dicom_path)
 
-        if folder_path:
+    def load_dicom_folder_direct(self, folder_path: str):
+        """Load DICOM folder directly without dialog"""
+        if folder_path and Path(folder_path).exists():
+            # Check if we already have a DICOM loaded
+            if hasattr(self, "dicom_parser") and self.dicom_parser is not None:
+                # Ask user about loading new DICOM
+                reply = QMessageBox.question(
+                    self,
+                    "Load New DICOM",
+                    "Loading a new DICOM series will clear current analysis.\n\n"
+                    "Do you want to continue?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.Yes,
+                )
+
+                if reply == QMessageBox.StandardButton.Yes:
+                    # Clear all current analysis
+                    self.clear_all_analysis()
+                else:
+                    return
+
             # Save for auto-load on next startup
             self.last_loaded_path = folder_path
-            self.last_loaded_type = 'folder'
+            self.last_loaded_type = "folder"
 
             # Use new DicomFolderLoader
             folder_loader = DicomFolderLoader()
@@ -911,8 +1017,9 @@ class MainWindow(QMainWindow):
                     study_info = folder_loader.get_study_info()
 
                     if not series_list:
-                        QMessageBox.warning(self, "No Series Found",
-                                          "No DICOM series found in the selected folder.")
+                        QMessageBox.warning(
+                            self, "No Series Found", "No DICOM series found in the selected folder."
+                        )
                         return
 
                     # Store folder loader for later use
@@ -932,105 +1039,82 @@ class MainWindow(QMainWindow):
                         # Multiple series - show selection dialog
                         from .dicom_projection_dialog import ProjectionSelectionDialog
 
-                        dialog = ProjectionSelectionDialog(series_list, study_info, self)
-                        if dialog.exec() == dialog.DialogCode.Accepted:
-                            selected_series = dialog.selected_series
+                        dlg = ProjectionSelectionDialog(series_list, study_info, self)
+                        if dlg.exec():
+                            selected_series = dlg.selected_series
                             if selected_series:
                                 # Find index of selected series
-                                for i, series in enumerate(series_list):
+                                for idx, series in enumerate(series_list):
                                     if series.series_uid == selected_series.series_uid:
-                                        self.current_series_index = i
+                                        self.current_series_index = idx
                                         break
 
                                 self._load_series(selected_series)
 
-                                # Enable projection controls
-                                self.prev_projection_button.setEnabled(True)
-                                self.next_projection_button.setEnabled(True)
+                                # Enable projection controls if multiple series
+                                self.prev_projection_button.setEnabled(
+                                    self.current_series_index > 0
+                                )
+                                self.next_projection_button.setEnabled(
+                                    self.current_series_index < len(self.all_series) - 1
+                                )
                                 self.projection_select_button.setEnabled(True)
                 else:
-                    QMessageBox.warning(self, "Failed to Load",
-                                      "Failed to load DICOM folder.")
+                    QMessageBox.critical(
+                        self, "Error", f"Failed to load DICOM folder:\n{folder_path}"
+                    )
             finally:
                 progress.close()
+
+    def open_dicom_folder(self):
+        """Open DICOM folder dialog"""
+        folder_path = QFileDialog.getExistingDirectory(
+            self, "Select DICOM Folder", str(Path.home()), QFileDialog.Option.ShowDirsOnly
+        )
+
+        if folder_path:
+            self.load_dicom_folder_direct(folder_path)
 
     def open_default_dicom_folder(self):
         """Open the default DICOM folder"""
         default_folder = "/Users/fatihkoksal/Projelerim/Coronary_Clear_Vision/LOCAL"
 
-        # Save for auto-load on next startup
-        self.last_loaded_path = default_folder
-        self.last_loaded_type = 'folder'
-
         # Check if the folder exists
         if not Path(default_folder).exists():
-            QMessageBox.warning(self, "Folder Not Found",
-                              f"Default DICOM folder not found:\n{default_folder}\n\n"
-                              "Please make sure the drive is mounted.")
+            QMessageBox.warning(
+                self,
+                "Folder Not Found",
+                f"Default DICOM folder not found:\n{default_folder}\n\n"
+                "Please make sure the drive is mounted.",
+            )
             return
 
-        # Use DicomFolderLoader
-        folder_loader = DicomFolderLoader()
-
-        # Show progress dialog
-        progress = QProgressDialog("Loading default DICOM folder...", None, 0, 0, self)
-        progress.setWindowModality(Qt.WindowModality.WindowModal)
-        progress.show()
-
-        try:
-            if folder_loader.load_folder(default_folder):
-                series_list = folder_loader.get_series_list()
-                study_info = folder_loader.get_study_info()
-
-                if not series_list:
-                    QMessageBox.warning(self, "No Series Found",
-                                      "No DICOM series found in the default folder.")
-                    return
-
-                # Store folder loader for later use
-                self.folder_loader = folder_loader
-                self.all_series = series_list
-
-                if len(series_list) == 1:
-                    # Single series - load directly
-                    self.current_series_index = 0
-                    self._load_series(series_list[0])
-
-                    # Disable projection controls
-                    self.prev_projection_button.setEnabled(False)
-                    self.next_projection_button.setEnabled(False)
-                    self.projection_select_button.setEnabled(False)
-                else:
-                    # Multiple series - show selection dialog
-                    from .dicom_projection_dialog import ProjectionSelectionDialog
-
-                    dialog = ProjectionSelectionDialog(series_list, study_info, self)
-                    if dialog.exec() == dialog.DialogCode.Accepted:
-                        selected_series = dialog.selected_series
-                        if selected_series:
-                            # Find index of selected series
-                            for i, series in enumerate(series_list):
-                                if series.series_uid == selected_series.series_uid:
-                                    self.current_series_index = i
-                                    break
-
-                            self._load_series(selected_series)
-
-                            # Enable projection controls
-                            self.prev_projection_button.setEnabled(True)
-                            self.next_projection_button.setEnabled(True)
-                            self.projection_select_button.setEnabled(True)
-            else:
-                QMessageBox.warning(self, "Failed to Load",
-                                  "Failed to load default DICOM folder.")
-        finally:
-            progress.close()
+        # Load the folder directly
+        self.load_dicom_folder_direct(default_folder)
 
     def load_dicom_file(self, file_path: str):
         """Load a DICOM file"""
+        # Check if we already have a DICOM loaded
+        if hasattr(self, "dicom_parser") and self.dicom_parser is not None:
+            # Ask user about loading new DICOM
+            reply = QMessageBox.question(
+                self,
+                "Load New DICOM",
+                "Loading a new DICOM file will clear current analysis.\n\n"
+                "Do you want to continue?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.Yes,
+            )
+
+            if reply == QMessageBox.StandardButton.Yes:
+                # Clear all current analysis
+                self.clear_all_analysis()
+            else:
+                return
+
         # Save for auto-load on next startup
         self.last_loaded_path = file_path
-        self.last_loaded_type = 'file'
+        self.last_loaded_type = "file"
 
         # Check if it's a DICOMDIR - show projection selection dialog
         if Path(file_path).name == "DICOMDIR":
@@ -1054,7 +1138,7 @@ class MainWindow(QMainWindow):
                     if selected_file:
                         # Find index of selected projection
                         for i, proj in enumerate(self.all_projections):
-                            if proj['file_path'] == selected_file:
+                            if proj["file_path"] == selected_file:
                                 self.current_projection_index = i
                                 break
                         self._load_single_dicom(selected_file)
@@ -1071,11 +1155,89 @@ class MainWindow(QMainWindow):
         self.projection_select_button.setEnabled(False)
         self._load_single_dicom(file_path)
 
+    def clear_all_analysis(self):
+        """Clear all analysis results and overlays"""
+        try:
+            # Reset EKG parser and viewer
+            if hasattr(self, "ekg_parser") and self.ekg_parser:
+                self.ekg_parser.reset()
+            if hasattr(self, "ekg_viewer") and self.ekg_viewer:
+                self.ekg_viewer.reset()
+
+            # Clear all overlays from viewer
+            if hasattr(self, "viewer_widget") and self.viewer_widget:
+                try:
+                    self.viewer_widget.clear_overlays()
+                    self.viewer_widget.set_tracking_enabled(False)
+                    self.viewer_widget.clear_user_points()
+                except Exception as e:
+                    logger.warning(f"Error clearing viewer overlays: {e}")
+
+            # Clear QCA results
+            if hasattr(self, "qca_widget") and self.qca_widget:
+                try:
+                    self.qca_widget.clear_results()
+                except Exception as e:
+                    logger.warning(f"Error clearing QCA results: {e}")
+
+            # Clear RWS results
+            if hasattr(self, "rws_widget") and self.rws_widget:
+                try:
+                    self.rws_widget.clear_analysis()
+                except Exception as e:
+                    logger.warning(f"Error clearing RWS results: {e}")
+
+            if hasattr(self, "rws_enhanced_widget") and self.rws_enhanced_widget:
+                try:
+                    self.rws_enhanced_widget.clear_analysis()
+                except Exception as e:
+                    logger.warning(f"Error clearing enhanced RWS results: {e}")
+
+            # Clear segmentation results - be careful here as it may trigger display_frame
+            if hasattr(self, "segmentation_widget") and self.segmentation_widget:
+                try:
+                    # Instead of clear_mask which triggers display_frame, directly clear the mask
+                    if hasattr(self.segmentation_widget, "current_mask"):
+                        self.segmentation_widget.current_mask = None
+                    if hasattr(self.segmentation_widget, "mask_history"):
+                        self.segmentation_widget.mask_history.clear()
+                except Exception as e:
+                    logger.warning(f"Error clearing segmentation: {e}")
+
+            # Reset batch segmentation results
+            if hasattr(self, "batch_segmentation_results"):
+                self.batch_segmentation_results = {}
+
+            # Reset tracked range
+            if hasattr(self, "tracked_range"):
+                delattr(self, "tracked_range")
+
+            # Hide proceed to analysis button if visible
+            if hasattr(self, "proceed_to_analysis_btn"):
+                self.proceed_to_analysis_btn.setVisible(False)
+
+            # Clear calibration
+            if hasattr(self, "calibration_factor"):
+                self.calibration_factor = None
+
+            # Reset cardiac phases
+            if hasattr(self, "viewer_widget") and self.viewer_widget:
+                self.viewer_widget.cardiac_phases = None
+                self.viewer_widget.frame_timestamps = None
+
+            logger.info("All analysis results and overlays cleared")
+
+        except Exception as e:
+            logger.error(f"Error in clear_all_analysis: {e}")
+
     def _load_series(self, series: DicomSeries):
         """Load a DICOM series"""
-        if not hasattr(self, 'folder_loader') or not self.folder_loader:
+        if not hasattr(self, "folder_loader") or not self.folder_loader:
             logger.error("No folder loader available")
             return
+
+        # Clear all previous analysis
+        self.clear_all_analysis()
 
         dicom_data = self.folder_loader.load_series(series)
         if dicom_data:
@@ -1098,21 +1260,21 @@ class MainWindow(QMainWindow):
                         "Invalid DICOM File",
                         f"Cannot load series: The DICOM file does not contain pixel data.\n\n"
                         f"Series: {series.series_description}\n"
-                        f"This may be a non-image DICOM file (e.g., structured report, presentation state)."
+                        f"This may be a non-image DICOM file (e.g., structured report, presentation state).",
                     )
                     return
                 else:
                     raise
             except Exception as e:
                 QMessageBox.critical(
-                    self,
-                    "DICOM Loading Error",
-                    f"Failed to load pixel data: {str(e)}"
+                    self, "DICOM Loading Error", f"Failed to load pixel data: {str(e)}"
                 )
                 return
 
-            self.dicom_parser.is_multi_frame = hasattr(dicom_data, 'NumberOfFrames')
-            self.dicom_parser.num_frames = int(dicom_data.NumberOfFrames) if self.dicom_parser.is_multi_frame else 1
+            self.dicom_parser.is_multi_frame = hasattr(dicom_data, "NumberOfFrames")
+            self.dicom_parser.num_frames = (
+                int(dicom_data.NumberOfFrames) if self.dicom_parser.is_multi_frame else 1
+            )
             self.dicom_parser._extract_metadata()
 
             # Update status
@@ -1126,31 +1288,8 @@ class MainWindow(QMainWindow):
 
     def _load_single_dicom(self, file_path: str):
         """Load a single DICOM file"""
-        # Reset EKG parser for new file
-        self.ekg_parser.reset()
-
-        # Reset EKG viewer
-        self.ekg_viewer.reset()
-
-        # Clear all overlays from viewer
-        self.viewer_widget.clear_overlays()
-
-        # Clear tracking points
-        self.viewer_widget.set_tracking_enabled(False)
-        self.viewer_widget.clear_user_points()
-
-        # Reset any analysis results
-        if hasattr(self, 'batch_segmentation_results'):
-            self.batch_segmentation_results = {}
-
-
-        # Reset any tracked range
-        if hasattr(self, 'tracked_range'):
-            delattr(self, 'tracked_range')
-
-        # Hide proceed to analysis button if visible
-        if hasattr(self, 'proceed_to_analysis_btn'):
-            self.proceed_to_analysis_btn.setVisible(False)
+        # Clear all previous analysis
+        self.clear_all_analysis()
 
         if self.dicom_parser.load_dicom(file_path):
             self.current_file = Path(file_path)
@@ -1163,12 +1302,18 @@ class MainWindow(QMainWindow):
                 # Don't automatically use DICOM pixel spacing - it's often unreliable
                 # User should always perform manual catheter calibration
                 if self.calibration_factor is None:
-                    logger.warning(f"DICOM pixel spacing available ({self.fallback_calibration:.5f} mm/pixel) but not using it automatically")
-                    logger.warning("User should perform manual catheter calibration for accurate measurements")
-                    self.update_status("⚠️ Please perform catheter calibration for accurate measurements")
+                    logger.warning(
+                        f"DICOM pixel spacing available ({self.fallback_calibration:.5f} mm/pixel) but not using it automatically"
+                    )
+                    logger.warning(
+                        "User should perform manual catheter calibration for accurate measurements"
+                    )
+                    self.update_status(
+                        "⚠️ Please perform catheter calibration for accurate measurements"
+                    )
 
                 # Pass pixel spacing to calibration widget
-                if hasattr(self, 'calibration_widget'):
+                if hasattr(self, "calibration_widget"):
                     self.calibration_widget.set_dicom_pixel_spacing(self.fallback_calibration)
 
             # Update UI
@@ -1198,7 +1343,7 @@ class MainWindow(QMainWindow):
             self.viewer_widget.reset_heartbeat_overlay()
 
             # Update segmentation widget - call on_frame_changed for first frame
-            if hasattr(self, 'segmentation_widget') and self.segmentation_widget:
+            if hasattr(self, "segmentation_widget") and self.segmentation_widget:
                 self.segmentation_widget.on_frame_changed(0)
 
             # Update tracking buttons
@@ -1210,15 +1355,15 @@ class MainWindow(QMainWindow):
             # Extract frame timestamps for synchronization
             self.extract_frame_timestamps()
             # Share timestamps with viewer widget
-            if hasattr(self, 'frame_timestamps'):
+            if hasattr(self, "frame_timestamps"):
                 self.viewer_widget.frame_timestamps = self.frame_timestamps
 
             # Check synchronization status
             self.check_ekg_sync_status()
 
             # Automatically enable calibration mode after loading DICOM
-            self.activity_bar.set_active_mode('calibration')
-            self.on_activity_mode_changed('calibration')
+            self.activity_bar.set_active_mode("calibration")
+            self.on_activity_mode_changed("calibration")
 
             # Start automatic playback for multi-frame DICOMs
             if self.dicom_parser.is_multi_frame and self.dicom_parser.num_frames > 1:
@@ -1245,39 +1390,51 @@ class MainWindow(QMainWindow):
             self.check_r_peak_at_frame(value)
 
             # Maintain calibration mode if active
-            if (self.current_mode == "calibration" and
-                hasattr(self.calibration_widget, 'is_active') and
-                self.calibration_widget.is_active):
+            if (
+                self.current_mode == "calibration"
+                and hasattr(self.calibration_widget, "is_active")
+                and self.calibration_widget.is_active
+            ):
                 # Re-enable calibration mode in viewer if it was disabled
                 self.viewer_widget.set_calibration_mode(True)
 
             # Load stored QCA/segmentation results if available
-            if hasattr(self.viewer_widget, 'frame_qca_results') and value in self.viewer_widget.frame_qca_results:
+            if (
+                hasattr(self.viewer_widget, "frame_qca_results")
+                and value in self.viewer_widget.frame_qca_results
+            ):
                 qca_result = self.viewer_widget.frame_qca_results[value]
-                if qca_result and qca_result.get('success'):
-                    settings = self.qca_widget.get_overlay_settings() if hasattr(self, 'qca_widget') else {
-                        'show_measurements': True,
-                        'show_stenosis': True,
-                        'show_reference': True,
-                        'show_centerline': True,
-                        'color': 'Yellow'
-                    }
+                if qca_result and qca_result.get("success"):
+                    settings = (
+                        self.qca_widget.get_overlay_settings()
+                        if hasattr(self, "qca_widget")
+                        else {
+                            "show_measurements": True,
+                            "show_stenosis": True,
+                            "show_reference": True,
+                            "show_centerline": True,
+                            "color": "Yellow",
+                        }
+                    )
                     # Add enabled flag
-                    settings['enabled'] = True
+                    settings["enabled"] = True
                     self.viewer_widget.set_qca_overlay(qca_result, settings)
 
                     # Update QCA widget with frame-specific results if in QCA mode
-                    if self.current_mode == "qca" and hasattr(self, 'qca_widget'):
+                    if self.current_mode == "qca" and hasattr(self, "qca_widget"):
                         self.qca_widget.display_frame_results(value, qca_result)
 
-            if hasattr(self.viewer_widget, 'frame_segmentation_results') and value in self.viewer_widget.frame_segmentation_results:
+            if (
+                hasattr(self.viewer_widget, "frame_segmentation_results")
+                and value in self.viewer_widget.frame_segmentation_results
+            ):
                 seg_result = self.viewer_widget.frame_segmentation_results[value]
-                if seg_result and seg_result.get('success'):
+                if seg_result and seg_result.get("success"):
                     settings = {
-                        'show_overlay': True,
-                        'opacity': 1.0,
-                        'color': 'Red',
-                        'contour_only': False
+                        "show_overlay": True,
+                        "opacity": 1.0,
+                        "color": "Red",
+                        "contour_only": False,
                     }
                     self.viewer_widget.set_segmentation_overlay(seg_result, settings)
             else:
@@ -1287,7 +1444,7 @@ class MainWindow(QMainWindow):
                 self.viewer_widget._request_update()
 
             # Update segmentation widget - call on_frame_changed to clear points and import tracking points
-            if hasattr(self, 'segmentation_widget') and self.segmentation_widget:
+            if hasattr(self, "segmentation_widget") and self.segmentation_widget:
                 self.segmentation_widget.on_frame_changed(value)
 
     def update_frame_label(self, current_frame: int):
@@ -1315,11 +1472,11 @@ class MainWindow(QMainWindow):
             self.play_button.setText("▶")
         else:
             # Exit calibration mode before starting playback
-            if self.viewer_widget.interaction_mode == 'calibrate':
+            if self.viewer_widget.interaction_mode == "calibrate":
                 self.viewer_widget.stop_calibration()
 
             # Clear any calibration graphics during playback
-            if hasattr(self.viewer_widget, 'overlay_item'):
+            if hasattr(self.viewer_widget, "overlay_item"):
                 self.viewer_widget.overlay_item.calibration_line = None
                 self.viewer_widget.overlay_item.update()
 
@@ -1352,37 +1509,46 @@ class MainWindow(QMainWindow):
 
     def next_projection(self):
         """Load next projection"""
+        logger.info("Loading next projection...")
+
         # Check if we have series from folder loader
-        if hasattr(self, 'all_series') and self.all_series and len(self.all_series) > 1:
+        if hasattr(self, "all_series") and self.all_series and len(self.all_series) > 1:
             self.current_series_index = (self.current_series_index + 1) % len(self.all_series)
             self._load_series(self.all_series[self.current_series_index])
         # Fallback to old projection system
         elif self.all_projections and len(self.all_projections) > 1:
-            self.current_projection_index = (self.current_projection_index + 1) % len(self.all_projections)
+            self.current_projection_index = (self.current_projection_index + 1) % len(
+                self.all_projections
+            )
             self._load_projection_at_index(self.current_projection_index)
 
     def previous_projection(self):
         """Load previous projection"""
+        logger.info("Loading previous projection...")
+
         # Check if we have series from folder loader
-        if hasattr(self, 'all_series') and self.all_series and len(self.all_series) > 1:
+        if hasattr(self, "all_series") and self.all_series and len(self.all_series) > 1:
             self.current_series_index = (self.current_series_index - 1) % len(self.all_series)
             self._load_series(self.all_series[self.current_series_index])
         # Fallback to old projection system
         elif self.all_projections and len(self.all_projections) > 1:
-            self.current_projection_index = (self.current_projection_index - 1) % len(self.all_projections)
+            self.current_projection_index = (self.current_projection_index - 1) % len(
+                self.all_projections
+            )
             self._load_projection_at_index(self.current_projection_index)
 
     def _load_projection_at_index(self, index: int):
         """Load projection at given index"""
         if 0 <= index < len(self.all_projections):
             projection = self.all_projections[index]
-            self._load_single_dicom(projection['file_path'])
+            self._load_single_dicom(projection["file_path"])
 
     def show_projection_dialog(self):
         """Show projection selection dialog"""
         # Check if we have series from folder loader
-        if hasattr(self, 'all_series') and self.all_series and hasattr(self, 'folder_loader'):
+        if hasattr(self, "all_series") and self.all_series and hasattr(self, "folder_loader"):
             from .dicom_projection_dialog import ProjectionSelectionDialog
+
             study_info = self.folder_loader.get_study_info()
             dialog = ProjectionSelectionDialog(self.all_series, study_info, self)
             if dialog.exec() == dialog.DialogCode.Accepted:
@@ -1402,7 +1568,7 @@ class MainWindow(QMainWindow):
                 if selected_file:
                     # Find index of selected projection
                     for i, proj in enumerate(self.all_projections):
-                        if proj['file_path'] == selected_file:
+                        if proj["file_path"] == selected_file:
                             self.current_projection_index = i
                             break
                     self._load_single_dicom(selected_file)
@@ -1439,67 +1605,85 @@ class MainWindow(QMainWindow):
 
     def update_tracking_buttons(self):
         """Update tracking button states and make track all button blink when ready"""
-        if not hasattr(self, 'viewer_widget') or not hasattr(self, 'track_all_button'):
+        if not hasattr(self, "viewer_widget") or not hasattr(self, "track_all_button"):
             return
-        
+
         # Get current tracking points - check both user_points and frame_points
         current_points = []
-        if hasattr(self.viewer_widget, 'overlay_item'):
+        if hasattr(self.viewer_widget, "overlay_item"):
             # First check user_points (for multi-frame mode)
-            if hasattr(self.viewer_widget.overlay_item, 'user_points') and self.viewer_widget.overlay_item.user_points:
+            if (
+                hasattr(self.viewer_widget.overlay_item, "user_points")
+                and self.viewer_widget.overlay_item.user_points
+            ):
                 current_points = self.viewer_widget.overlay_item.user_points
             # Also check frame-specific points
-            elif (hasattr(self.viewer_widget.overlay_item, 'frame_points') and 
-                  self.viewer_widget.current_frame_index in self.viewer_widget.overlay_item.frame_points):
-                current_points = self.viewer_widget.overlay_item.frame_points[self.viewer_widget.current_frame_index]
-        
+            elif (
+                hasattr(self.viewer_widget.overlay_item, "frame_points")
+                and self.viewer_widget.current_frame_index
+                in self.viewer_widget.overlay_item.frame_points
+            ):
+                current_points = self.viewer_widget.overlay_item.frame_points[
+                    self.viewer_widget.current_frame_index
+                ]
+
         num_points = len(current_points) if current_points else 0
         has_points = num_points > 0
 
         # Can track forward if not at last frame and have points
-        can_track_forward = has_points and hasattr(self, 'frame_slider') and self.frame_slider.value() < self.frame_slider.maximum()
-        if hasattr(self, 'track_forward_button'):
+        can_track_forward = (
+            has_points
+            and hasattr(self, "frame_slider")
+            and self.frame_slider.value() < self.frame_slider.maximum()
+        )
+        if hasattr(self, "track_forward_button"):
             self.track_forward_button.setEnabled(can_track_forward)
 
         # Can track backward if not at first frame and have points
-        can_track_backward = has_points and hasattr(self, 'frame_slider') and self.frame_slider.value() > 0
-        if hasattr(self, 'track_backward_button'):
+        can_track_backward = (
+            has_points and hasattr(self, "frame_slider") and self.frame_slider.value() > 0
+        )
+        if hasattr(self, "track_backward_button"):
             self.track_backward_button.setEnabled(can_track_backward)
 
         # Start Analysis button logic with enhanced blinking
         if num_points >= 2:
             # Enable Start Analysis button
             self.track_all_button.setEnabled(True)
-            
+
             # Start enhanced blinking in tracking mode
-            if getattr(self, 'current_mode', '') == "tracking":
+            if getattr(self, "current_mode", "") == "tracking":
                 self.start_track_button_blinking()
-                if not hasattr(self, '_tracking_ready_logged'):
-                    logger.info(f"Start Analysis button ready - {num_points} tracking points available")
+                if not hasattr(self, "_tracking_ready_logged"):
+                    logger.info(
+                        f"Start Analysis button ready - {num_points} tracking points available"
+                    )
                     self._tracking_ready_logged = True
         else:
             # Disable Start Analysis button and stop blinking
             self.track_all_button.setEnabled(False)
             self.stop_track_button_blinking()
-            
+
             # Clear logging flag
-            if hasattr(self, '_tracking_ready_logged'):
-                delattr(self, '_tracking_ready_logged')
-            
+            if hasattr(self, "_tracking_ready_logged"):
+                delattr(self, "_tracking_ready_logged")
+
             if num_points == 1:
-                logger.info("Start Analysis button disabled - need 2 points for analysis (currently 1)")
-            elif num_points == 0 and getattr(self, 'current_mode', '') == "tracking":
+                logger.info(
+                    "Start Analysis button disabled - need 2 points for analysis (currently 1)"
+                )
+            elif num_points == 0 and getattr(self, "current_mode", "") == "tracking":
                 logger.info("Start Analysis button disabled - no tracking points available")
 
         # Check if we're in range selection mode and have 2 points
-        if hasattr(self, 'range_selection_mode') and self.range_selection_mode:
+        if hasattr(self, "range_selection_mode") and self.range_selection_mode:
             current_frame_points = self.viewer_widget.overlay_item.frame_points.get(
                 self.viewer_widget.current_frame_index, []
             )
             if len(current_frame_points) >= 2:
                 # Two points selected, start tracking workflow
                 self.range_selection_mode = False
-                if hasattr(self, 'tracking_range_limit'):
+                if hasattr(self, "tracking_range_limit"):
                     start_frame, end_frame = self.tracking_range_limit
                     self.start_range_tracking_workflow(start_frame, end_frame)
 
@@ -1508,13 +1692,13 @@ class MainWindow(QMainWindow):
         self.activity_bar.set_active_mode("tracking")
         self.on_activity_mode_changed("tracking")
 
-
     def create_menus(self):
         """Create menu bar"""
         menubar = self.menuBar()
 
         # Set menu bar style (VSCode dark theme)
-        menubar.setStyleSheet("""
+        menubar.setStyleSheet(
+            """
             QMenuBar {
                 background-color: #2d2d30;
                 color: #cccccc;
@@ -1552,7 +1736,8 @@ class MainWindow(QMainWindow):
                 background: #3c3c3c;
                 margin: 5px 0;
             }
-        """)
+        """
+        )
 
         # File menu
         file_menu = menubar.addMenu("&File")
@@ -1610,13 +1795,16 @@ class MainWindow(QMainWindow):
 
         # Show information message
         method = "advanced" if self.qca_analyzer.use_advanced_diameter else "simple"
-        QMessageBox.information(self, "Diameter Measurement Method",
-                              f"Diameter measurement method changed to: {method.upper()}\n\n"
-                              f"Advanced method provides:\n"
-                              f"• Sub-pixel precision\n"
-                              f"• Multiple measurement techniques\n"
-                              f"• Adaptive smoothing\n"
-                              f"• Better accuracy for stenosis detection")
+        QMessageBox.information(
+            self,
+            "Diameter Measurement Method",
+            f"Diameter measurement method changed to: {method.upper()}\n\n"
+            f"Advanced method provides:\n"
+            f"• Sub-pixel precision\n"
+            f"• Multiple measurement techniques\n"
+            f"• Adaptive smoothing\n"
+            f"• Better accuracy for stenosis detection",
+        )
 
         # Log the change
         logger.info(f"Diameter measurement method changed to: {method}")
@@ -1629,7 +1817,7 @@ class MainWindow(QMainWindow):
             "Coronary Clear Vision\n"
             "Version 2.0\n\n"
             "A DICOM viewer for coronary angiography\n"
-            "with EKG integration and automated stenosis analysis."
+            "with EKG integration and automated stenosis analysis.",
         )
 
     def update_zoom_status(self, zoom_level: float):
@@ -1658,10 +1846,12 @@ class MainWindow(QMainWindow):
 
         if last_dicom_path and Path(last_dicom_path).exists():
             # Delay auto-load slightly to ensure UI is ready
-            QTimer.singleShot(500, lambda: self.auto_load_last_dicom(
-                last_dicom_path, last_dicom_type,
-                settings.value("last_series_index", 0, int)
-            ))
+            QTimer.singleShot(
+                500,
+                lambda: self.auto_load_last_dicom(
+                    last_dicom_path, last_dicom_type, settings.value("last_series_index", 0, int)
+                ),
+            )
 
     def save_settings(self):
         """Save application settings"""
@@ -1669,12 +1859,12 @@ class MainWindow(QMainWindow):
         settings.setValue("window_geometry", self.saveGeometry())
 
         # Save last opened DICOM file path and type
-        if hasattr(self, 'last_loaded_path'):
+        if hasattr(self, "last_loaded_path"):
             settings.setValue("last_dicom_path", self.last_loaded_path)
             settings.setValue("last_dicom_type", self.last_loaded_type)  # 'file' or 'folder'
 
             # If it was a folder with multiple series, save the selected series index
-            if hasattr(self, 'current_series_index') and hasattr(self, 'all_series'):
+            if hasattr(self, "current_series_index") and hasattr(self, "all_series"):
                 settings.setValue("last_series_index", self.current_series_index)
 
     def auto_load_last_dicom(self, file_path: str, load_type: str, series_index: int = 0):
@@ -1682,9 +1872,9 @@ class MainWindow(QMainWindow):
         try:
             self.update_status(f"Loading last opened DICOM...")
 
-            if load_type == 'file':
+            if load_type == "file":
                 self.load_dicom_file(file_path)
-            elif load_type == 'folder':
+            elif load_type == "folder":
                 # Load folder
                 folder_loader = DicomFolderLoader()
                 if folder_loader.load_folder(file_path):
@@ -1714,66 +1904,75 @@ class MainWindow(QMainWindow):
 
     def toggle_points_visibility(self, checked):
         """Toggle visibility of points overlay"""
-        if hasattr(self.viewer_widget, 'overlay_item'):
+        if hasattr(self.viewer_widget, "overlay_item"):
             self.viewer_widget.overlay_item.show_points = checked
             self.viewer_widget.overlay_item.update()
             self.viewer_widget._request_update()
 
     def toggle_segmentation_visibility(self, checked):
         """Toggle visibility of segmentation overlay"""
-        if hasattr(self.viewer_widget, 'overlay_item'):
+        if hasattr(self.viewer_widget, "overlay_item"):
             self.viewer_widget.overlay_item.show_segmentation = checked
             self.viewer_widget.overlay_item.update()
             self.viewer_widget._request_update()
 
     def toggle_qca_visibility(self, checked):
         """Toggle visibility of QCA overlay"""
-        if hasattr(self.viewer_widget, 'overlay_item'):
+        if hasattr(self.viewer_widget, "overlay_item"):
             self.viewer_widget.overlay_item.show_qca = checked
             self.viewer_widget.overlay_item.update()
             self.viewer_widget._request_update()
 
     def clear_current_points(self):
         """Clear points from current frame only"""
-        if hasattr(self.viewer_widget, 'overlay_item'):
+        if hasattr(self.viewer_widget, "overlay_item"):
             self.viewer_widget.overlay_item.user_points = []
             self.viewer_widget._request_update()
             self.update_status("Current frame points cleared")
 
     def clear_all_frame_points(self):
         """Clear all tracking points from all frames"""
-        reply = QMessageBox.question(self, "Clear All Frame Points",
-                                   "Are you sure you want to clear all tracking points from all frames?",
-                                   QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        reply = QMessageBox.question(
+            self,
+            "Clear All Frame Points",
+            "Are you sure you want to clear all tracking points from all frames?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
         if reply == QMessageBox.StandardButton.Yes:
             self.viewer_widget.clear_user_points()
             self.update_status("All frame tracking points cleared")
 
     def clear_all_overlays(self):
         """Clear all overlays including segmentation and QCA for current frame"""
-        reply = QMessageBox.question(self, "Clear Current Overlays",
-                                   "Are you sure you want to clear all overlays from the current frame?",
-                                   QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        reply = QMessageBox.question(
+            self,
+            "Clear Current Overlays",
+            "Are you sure you want to clear all overlays from the current frame?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
         if reply == QMessageBox.StandardButton.Yes:
             self.viewer_widget.clear_overlays()
             self.update_status("Current frame overlays cleared")
 
     def clear_all_frames_overlays(self):
         """Clear all overlays from all frames"""
-        reply = QMessageBox.question(self, "Clear All Frames Overlays",
-                                   "Are you sure you want to clear all segmentation and QCA overlays from ALL frames?\n\n"
-                                   "This will remove all segmentation masks and QCA results.",
-                                   QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        reply = QMessageBox.question(
+            self,
+            "Clear All Frames Overlays",
+            "Are you sure you want to clear all segmentation and QCA overlays from ALL frames?\n\n"
+            "This will remove all segmentation masks and QCA results.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
         if reply == QMessageBox.StandardButton.Yes:
             # Clear viewer widget overlays
             self.viewer_widget.clear_overlays()
 
             # Clear stored results
-            if hasattr(self, 'batch_segmentation_results'):
+            if hasattr(self, "batch_segmentation_results"):
                 self.batch_segmentation_results.clear()
-            if hasattr(self, 'batch_qca_results'):
+            if hasattr(self, "batch_qca_results"):
                 self.batch_qca_results.clear()
-            if hasattr(self.viewer_widget, 'frame_segmentation_results'):
+            if hasattr(self.viewer_widget, "frame_segmentation_results"):
                 self.viewer_widget.frame_segmentation_results.clear()
 
             # Clear segmentation widget results if it exists
@@ -1790,7 +1989,7 @@ class MainWindow(QMainWindow):
         """Handle window resize to update content panel"""
         super().resizeEvent(event)
         # Update content panel size when window is resized
-        if hasattr(self, 'content_panel'):
+        if hasattr(self, "content_panel"):
             self.update_content_panel_size()
 
     def closeEvent(self, event):
@@ -1804,7 +2003,7 @@ class MainWindow(QMainWindow):
         from PyQt6.QtWidgets import QProgressDialog
 
         # Determine tracking range
-        if hasattr(self, 'tracking_range_limit') and self.tracking_range_limit:
+        if hasattr(self, "tracking_range_limit") and self.tracking_range_limit:
             # Use pre-defined range (from range selection mode)
             start_frame, end_frame = self.tracking_range_limit
             message = f"Tracking points through frames {start_frame + 1} to {end_frame + 1}..."
@@ -1813,10 +2012,10 @@ class MainWindow(QMainWindow):
             # Use current beat range instead of all frames
             current_frame = self.viewer_widget.current_frame_index
             start_frame, end_frame = self._get_current_beat_frame_range(current_frame)
-            
+
             # Start from current frame instead of beat start
             start_frame = current_frame
-            
+
             message = f"Tracking points through current cardiac cycle (frames {start_frame + 1} to {end_frame + 1})..."
             logger.info(f"Using current beat range: frames {start_frame + 1} to {end_frame + 1}")
 
@@ -1832,25 +2031,27 @@ class MainWindow(QMainWindow):
 
         # Perform batch tracking with range limits
         success = self.viewer_widget.track_all_frames(
-            progress_callback=update_progress,
-            start_frame=start_frame,
-            end_frame=end_frame
+            progress_callback=update_progress, start_frame=start_frame, end_frame=end_frame
         )
 
         progress.close()
 
         if success:
-            self.update_status(f"Successfully tracked points through frames {start_frame + 1} to {end_frame + 1}")
+            self.update_status(
+                f"Successfully tracked points through frames {start_frame + 1} to {end_frame + 1}"
+            )
             # Stop blinking when tracking is completed
             self.stop_track_button_blinking()
             # Refresh current frame display
             self.viewer_widget.display_frame(self.viewer_widget.current_frame_index)
             # Update segmentation widget
-            if hasattr(self, 'segmentation_widget') and self.segmentation_widget:
+            if hasattr(self, "segmentation_widget") and self.segmentation_widget:
                 self.segmentation_widget.on_frame_changed(self.viewer_widget.current_frame_index)
 
             # Directly proceed to sequential processing after tracking
-            logger.info(f"Tracking complete for frames {start_frame + 1} to {end_frame + 1}, starting sequential processing")
+            logger.info(
+                f"Tracking complete for frames {start_frame + 1} to {end_frame + 1}, starting sequential processing"
+            )
             self.tracked_range = (start_frame, end_frame)
             self.run_sequential_processing(start_frame, end_frame)
         else:
@@ -1858,7 +2059,7 @@ class MainWindow(QMainWindow):
 
     def show_tracking_complete_dialog(self, start_frame: int, end_frame: int):
         """Show dialog after tracking completion to allow editing"""
-        from PyQt6.QtWidgets import QMessageBox, QPushButton
+        from PyQt6.QtWidgets import QMessageBox
 
         msg = QMessageBox(self)
         msg.setWindowTitle("Tracking Complete")
@@ -1872,7 +2073,7 @@ class MainWindow(QMainWindow):
 
         # Add custom buttons
         proceed_btn = msg.addButton("Proceed to Analysis", QMessageBox.ButtonRole.ActionRole)
-        edit_btn = msg.addButton("Continue Editing", QMessageBox.ButtonRole.RejectRole)
+        msg.addButton("Continue Editing", QMessageBox.ButtonRole.RejectRole)
 
         msg.exec()
         clicked_btn = msg.clickedButton()
@@ -1885,11 +2086,13 @@ class MainWindow(QMainWindow):
             # User wants to edit - store the range and show the proceed button
             self.tracked_range = (start_frame, end_frame)
             self.proceed_to_analysis_btn.setVisible(True)
-            self.update_status("You can now edit the tracked points. Use the frame slider to review.")
+            self.update_status(
+                "You can now edit the tracked points. Use the frame slider to review."
+            )
 
     def on_proceed_to_analysis(self):
         """Handle proceed to analysis button click"""
-        if hasattr(self, 'tracked_range'):
+        if hasattr(self, "tracked_range"):
             start_frame, end_frame = self.tracked_range
             # Hide the button
             self.proceed_to_analysis_btn.setVisible(False)
@@ -1904,22 +2107,29 @@ class MainWindow(QMainWindow):
 
         # Check if we already have segmentation results for this range
         has_existing_segmentation = False
-        if hasattr(self, 'batch_segmentation_results'):
+        if hasattr(self, "batch_segmentation_results"):
             # Check if all frames in range have segmentation
-            existing_count = sum(1 for frame_idx in range(start_frame, end_frame + 1)
-                               if frame_idx in self.batch_segmentation_results
-                               and self.batch_segmentation_results[frame_idx].get('success'))
+            existing_count = sum(
+                1
+                for frame_idx in range(start_frame, end_frame + 1)
+                if frame_idx in self.batch_segmentation_results
+                and self.batch_segmentation_results[frame_idx].get("success")
+            )
             has_existing_segmentation = existing_count == (end_frame - start_frame + 1)
 
         msg = QMessageBox(self)
         msg.setWindowTitle("Tracking Complete")
 
         if has_existing_segmentation:
-            msg.setText(f"Tracking completed. Found existing segmentation for all frames {start_frame + 1} to {end_frame + 1}.")
+            msg.setText(
+                f"Tracking completed. Found existing segmentation for all frames {start_frame + 1} to {end_frame + 1}."
+            )
             msg.setInformativeText("Would you like to run QCA analysis on existing segmentation?")
 
             # Add custom buttons
-            sequential_btn = msg.addButton("Sequential Processing", QMessageBox.ButtonRole.ActionRole)
+            sequential_btn = msg.addButton(
+                "Sequential Processing", QMessageBox.ButtonRole.ActionRole
+            )
             msg.addButton(QMessageBox.StandardButton.Cancel)
 
             msg.exec()
@@ -1938,7 +2148,9 @@ class MainWindow(QMainWindow):
             )
 
             # Add custom buttons
-            sequential_btn = msg.addButton("Start Sequential Processing", QMessageBox.ButtonRole.ActionRole)
+            sequential_btn = msg.addButton(
+                "Start Sequential Processing", QMessageBox.ButtonRole.ActionRole
+            )
             msg.addButton(QMessageBox.StandardButton.Cancel)
 
             msg.exec()
@@ -1957,8 +2169,9 @@ class MainWindow(QMainWindow):
 
         # Pass calibration to QCA widget if available
         if self.calibration_factor:
-            self.qca_widget.set_calibration(self.calibration_factor,
-                                           getattr(self, 'calibration_details', None))
+            self.qca_widget.set_calibration(
+                self.calibration_factor, getattr(self, "calibration_details", None)
+            )
 
     def toggle_segmentation_dialog(self):
         """Switch to Segmentation tab in accordion"""
@@ -1973,7 +2186,7 @@ class MainWindow(QMainWindow):
         self.segmentation_widget.set_frame_range(total_frames)
 
         # Activate segmentation mode
-        if hasattr(self.segmentation_widget, 'mode_button'):
+        if hasattr(self.segmentation_widget, "mode_button"):
             if not self.segmentation_widget.mode_button.isChecked():
                 self.segmentation_widget.mode_button.setChecked(True)
                 self.segmentation_widget.toggle_mode()
@@ -2019,7 +2232,7 @@ class MainWindow(QMainWindow):
         logger.info(f"Expected 30px vessel diameter: {30 * factor:.2f}mm")
 
         # Update viewer with calibration
-        if hasattr(self.viewer_widget, 'set_calibration'):
+        if hasattr(self.viewer_widget, "set_calibration"):
             self.viewer_widget.set_calibration(self.calibration_factor)
 
         # Automatically switch to tracking mode after calibration
@@ -2027,13 +2240,13 @@ class MainWindow(QMainWindow):
         self.on_activity_mode_changed("tracking")
 
         # Show calibration mask like segmentation
-        if 'mask' in details and hasattr(self.viewer_widget, 'set_segmentation_overlay'):
+        if "mask" in details and hasattr(self.viewer_widget, "set_segmentation_overlay"):
             # Use segmentation overlay to show calibration area
             overlay_settings = {
-                'enabled': True,
-                'opacity': 1.0,
-                'color': 'Green',
-                'contour_only': True
+                "enabled": True,
+                "opacity": 1.0,
+                "color": "Green",
+                "contour_only": True,
             }
             self.viewer_widget.set_segmentation_overlay(details, overlay_settings)
 
@@ -2042,9 +2255,11 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(status_msg)
 
         pixels_per_mm = 1.0 / self.calibration_factor if self.calibration_factor > 0 else 0
-        QMessageBox.information(self, "Success",
-                              f"Calibration applied successfully\n"
-                              f"Scale: {pixels_per_mm:.2f} pixels/mm")
+        QMessageBox.information(
+            self,
+            "Success",
+            f"Calibration applied successfully\n" f"Scale: {pixels_per_mm:.2f} pixels/mm",
+        )
 
         # Clear overlay after 3 seconds
         QTimer.singleShot(3000, lambda: self.viewer_widget.clear_segmentation_graphics())
@@ -2058,26 +2273,33 @@ class MainWindow(QMainWindow):
         # Validate pixels_per_mm before division
         if result.pixels_per_mm <= 0 or result.pixels_per_mm > 1000:  # Sanity check
             logger.error(f"Invalid pixels_per_mm value: {result.pixels_per_mm}")
-            QMessageBox.warning(self, "Calibration Error",
-                              f"Invalid calibration value detected.\nPlease try calibration again.")
+            QMessageBox.warning(
+                self,
+                "Calibration Error",
+                f"Invalid calibration value detected.\nPlease try calibration again.",
+            )
             return
 
         # Store calibration result
         self.calibration_factor = 1.0 / result.pixels_per_mm  # Convert to mm/pixel
         self.calibration_details = {
-            'catheter_width_mm': result.catheter_width_mm,
-            'catheter_width_pixels': result.catheter_width_pixels,
-            'pixels_per_mm': result.pixels_per_mm
+            "catheter_width_mm": result.catheter_width_mm,
+            "catheter_width_pixels": result.catheter_width_pixels,
+            "pixels_per_mm": result.pixels_per_mm,
         }
 
         # Update viewer with calibration
-        if hasattr(self.viewer_widget, 'set_calibration'):
+        if hasattr(self.viewer_widget, "set_calibration"):
             self.viewer_widget.set_calibration(self.calibration_factor)
 
         # Update status with comparison to fallback
         status_msg = f"Calibrated: {self.calibration_factor:.5f} mm/pixel"
         if self.fallback_calibration is not None:
-            diff_percent = abs((self.calibration_factor - self.fallback_calibration) / self.fallback_calibration * 100)
+            diff_percent = abs(
+                (self.calibration_factor - self.fallback_calibration)
+                / self.fallback_calibration
+                * 100
+            )
             status_msg += f" (DICOM: {self.fallback_calibration:.5f}, diff: {diff_percent:.1f}%)"
         self.update_status(status_msg)
 
@@ -2092,14 +2314,18 @@ class MainWindow(QMainWindow):
         self.viewer_widget.overlay_item.update()
 
         # Make sure we stay in calibration mode
-        if hasattr(self.viewer_widget, 'catheter_size') and hasattr(self.viewer_widget, 'catheter_diameter_mm'):
+        if hasattr(self.viewer_widget, "catheter_size") and hasattr(
+            self.viewer_widget, "catheter_diameter_mm"
+        ):
             # Stay in calibration mode with same catheter settings
-            self.viewer_widget.set_interaction_mode('calibrate')
+            self.viewer_widget.set_interaction_mode("calibrate")
 
         # Don't use fallback calibration - it's unreliable
         self.qca_analyzer.calibration_factor = None
         if self.fallback_calibration is not None:
-            self.update_status(f"Calibration deleted. DICOM pixel spacing ({self.fallback_calibration:.5f} mm/pixel) available but not used - please perform manual calibration")
+            self.update_status(
+                f"Calibration deleted. DICOM pixel spacing ({self.fallback_calibration:.5f} mm/pixel) available but not used - please perform manual calibration"
+            )
         else:
             self.update_status("Calibration deleted. No calibration available")
 
@@ -2111,8 +2337,8 @@ class MainWindow(QMainWindow):
         # Try to extract EKG data
         if self.ekg_parser.extract_ekg_from_dicom(self.dicom_parser.dicom_data):
             # Clear cached R-peaks
-            if hasattr(self, '_cached_r_peaks'):
-                delattr(self, '_cached_r_peaks')
+            if hasattr(self, "_cached_r_peaks"):
+                delattr(self, "_cached_r_peaks")
 
             # Detect R-peaks
             r_peaks = self.ekg_parser.detect_r_peaks()
@@ -2122,10 +2348,7 @@ class MainWindow(QMainWindow):
 
             # Display EKG data with quality metrics
             self.ekg_viewer.set_ekg_data(
-                self.ekg_parser.ekg_data,
-                self.ekg_parser.sampling_rate,
-                r_peaks,
-                quality_metrics
+                self.ekg_parser.ekg_data, self.ekg_parser.sampling_rate, r_peaks, quality_metrics
             )
 
             # Connect R-peak detection to heartbeat counter
@@ -2142,19 +2365,18 @@ class MainWindow(QMainWindow):
                 self.ekg_viewer.set_cardiac_phases(cardiac_phases)
 
                 # Map phases to frames for easier lookup
-                if 'phases' in cardiac_phases and self.dicom_parser.has_data():
+                if "phases" in cardiac_phases and self.dicom_parser.has_data():
                     frame_rate = self.dicom_parser.get_frame_rate()
                     total_frames = self.dicom_parser.get_frame_count()
 
                     # Use the phase detector to map phases to frames
                     from src.core.cardiac_phase_detector import CardiacPhaseDetector
+
                     detector = CardiacPhaseDetector(self.ekg_parser.sampling_rate)
                     frame_phases = detector.map_phases_to_frames(
-                        cardiac_phases['phases'],
-                        total_frames,
-                        frame_rate
+                        cardiac_phases["phases"], total_frames, frame_rate
                     )
-                    cardiac_phases['frame_phases'] = frame_phases
+                    cardiac_phases["frame_phases"] = frame_phases
                     logger.info(f"Mapped {len(frame_phases)} phase transitions to frames")
 
                 # Share cardiac phases with viewer widget
@@ -2167,8 +2389,8 @@ class MainWindow(QMainWindow):
                 status_msg = f"EKG loaded | Heart Rate: {heart_rate:.0f} BPM"
                 if quality_metrics:
                     status_msg += f" | Quality: {quality_metrics.get('quality_score', 0):.2f}"
-                if cardiac_phases and 'statistics' in cardiac_phases:
-                    stats = cardiac_phases['statistics']
+                if cardiac_phases and "statistics" in cardiac_phases:
+                    stats = cardiac_phases["statistics"]
                     status_msg += f" | Systole: {stats.get('systole_duration_ms_mean', 0):.0f}ms"
                 self.update_status(status_msg)
         else:
@@ -2187,22 +2409,22 @@ class MainWindow(QMainWindow):
         self.frame_timestamps = np.zeros(num_frames)
 
         # Try different methods to get frame times
-        if hasattr(ds, 'FrameTime') and ds.FrameTime:
+        if hasattr(ds, "FrameTime") and ds.FrameTime:
             # Frame time in milliseconds
             frame_time_ms = float(ds.FrameTime)
             # Create timestamps for each frame
             self.frame_timestamps = np.arange(num_frames) * (frame_time_ms / 1000.0)
 
-        elif hasattr(ds, 'FrameTimeVector') and ds.FrameTimeVector:
+        elif hasattr(ds, "FrameTimeVector") and ds.FrameTimeVector:
             # Direct frame time vector
             try:
                 times = [float(t) for t in ds.FrameTimeVector]
                 if len(times) == num_frames:
                     self.frame_timestamps = np.array(times) / 1000.0  # Convert to seconds
             except Exception as e:
-                logger.warning(f'Ignored exception: {e}')
+                logger.warning(f"Ignored exception: {e}")
 
-        elif hasattr(ds, 'CineRate') and ds.CineRate:
+        elif hasattr(ds, "CineRate") and ds.CineRate:
             # Cine rate (frames per second)
             fps = float(ds.CineRate)
             if fps > 0:
@@ -2257,10 +2479,14 @@ class MainWindow(QMainWindow):
         if len(start_frame_points) < 2:
             # No points yet, prompt user to select points
             from PyQt6.QtWidgets import QMessageBox
-            QMessageBox.information(self, "Select Reference Points",
+
+            QMessageBox.information(
+                self,
+                "Select Reference Points",
                 f"Frame range {start_frame + 1} to {end_frame + 1} selected.\n\n"
                 f"Please select 2 reference points on the vessel in this frame,\n"
-                f"then use tracking to propagate them through the range.")
+                f"then use tracking to propagate them through the range.",
+            )
 
             # Enable segmentation mode directly
             if self.segmentation_widget:
@@ -2333,8 +2559,8 @@ class MainWindow(QMainWindow):
 
     def clear_navigation_range(self):
         """Clear navigation range limits"""
-        if hasattr(self, 'navigation_range'):
-            delattr(self, 'navigation_range')
+        if hasattr(self, "navigation_range"):
+            delattr(self, "navigation_range")
 
         # Reset frame slider to full range
         if self.dicom_parser.has_data():
@@ -2369,13 +2595,18 @@ class MainWindow(QMainWindow):
         if not effective_calibration and self.dicom_parser.pixel_spacing is not None:
             effective_calibration = self.dicom_parser.pixel_spacing
             calibration_source = "DICOM pixel spacing"
-            logger.info(f"Using DICOM pixel spacing as calibration fallback: {effective_calibration:.5f} mm/pixel")
+            logger.info(
+                f"Using DICOM pixel spacing as calibration fallback: {effective_calibration:.5f} mm/pixel"
+            )
 
         if not effective_calibration:
-            reply = QMessageBox.question(self, "No Calibration",
-                                       "No calibration factor available (neither user calibration nor DICOM pixel spacing).\n"
-                                       "Continue with segmentation only?",
-                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            reply = QMessageBox.question(
+                self,
+                "No Calibration",
+                "No calibration factor available (neither user calibration nor DICOM pixel spacing).\n"
+                "Continue with segmentation only?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
             if reply != QMessageBox.StandardButton.Yes:
                 return
         else:
@@ -2390,13 +2621,19 @@ class MainWindow(QMainWindow):
         # Light mask limiting removed - always use moderate/tight limiting
 
         self.sequential_processor = create_sequential_processor(
-            self, start_frame, end_frame, effective_calibration,
-            use_curvature_resistant_centerline=False  # Always False
+            self,
+            start_frame,
+            end_frame,
+            effective_calibration,
+            use_curvature_resistant_centerline=False,  # Always False
         )
 
         if self.sequential_processor is None:
-            QMessageBox.warning(self, "No Tracked Frames",
-                              f"No frames with tracking points found in range {start_frame + 1}-{end_frame + 1}.")
+            QMessageBox.warning(
+                self,
+                "No Tracked Frames",
+                f"No frames with tracking points found in range {start_frame + 1}-{end_frame + 1}.",
+            )
             return
 
         # Connect signals
@@ -2427,13 +2664,13 @@ class MainWindow(QMainWindow):
 
     def update_batch_progress(self, current: int, total: int, message: str):
         """Update batch processing progress"""
-        if hasattr(self, 'batch_progress'):
+        if hasattr(self, "batch_progress"):
             self.batch_progress.setValue(current)
             self.batch_progress.setLabelText(message)
 
             # Check if cancelled
             if self.batch_progress.wasCanceled():
-                if hasattr(self, 'sequential_processor'):
+                if hasattr(self, "sequential_processor"):
                     self.sequential_processor.stop()
 
     # Sequential processing handlers
@@ -2445,7 +2682,7 @@ class MainWindow(QMainWindow):
         self.viewer_widget.display_frame(frame_idx)
 
         # Clear previous overlays when starting a new frame
-        if hasattr(self.viewer_widget, 'overlay_item'):
+        if hasattr(self.viewer_widget, "overlay_item"):
             self.viewer_widget.overlay_item.qca_results = None
             self.viewer_widget.overlay_item.segmentation_mask = None
             self.viewer_widget._request_update()
@@ -2453,18 +2690,13 @@ class MainWindow(QMainWindow):
     def on_sequential_segmentation(self, frame_idx: int, result: dict):
         """Handle sequential segmentation completion"""
         # Store segmentation result
-        if not hasattr(self.viewer_widget, 'frame_segmentation_results'):
+        if not hasattr(self.viewer_widget, "frame_segmentation_results"):
             self.viewer_widget.frame_segmentation_results = {}
         self.viewer_widget.frame_segmentation_results[frame_idx] = result
 
         # Update display if current frame
         if frame_idx == self.viewer_widget.current_frame_index:
-            settings = {
-                'enabled': True,
-                'opacity': 1.0,
-                'color': 'Red',
-                'contour_only': False
-            }
+            settings = {"enabled": True, "opacity": 1.0, "color": "Red", "contour_only": False}
             self.viewer_widget.set_segmentation_overlay(result, settings)
 
     def on_sequential_qca(self, frame_idx: int, result: dict):
@@ -2472,52 +2704,60 @@ class MainWindow(QMainWindow):
         logger.info(f"Sequential: QCA completed for frame {frame_idx}")
 
         # Add cardiac phase information to the result
-        if result.get('success'):
-            if hasattr(self.viewer_widget, 'cardiac_phases') and self.viewer_widget.cardiac_phases:
+        if result.get("success"):
+            if hasattr(self.viewer_widget, "cardiac_phases") and self.viewer_widget.cardiac_phases:
                 cardiac_phases = self.viewer_widget.cardiac_phases
                 logger.info(f"Frame {frame_idx}: Found cardiac_phases data: {bool(cardiac_phases)}")
 
                 # Find phase for this frame
-                if 'frame_phases' in cardiac_phases:
+                if "frame_phases" in cardiac_phases:
                     # Use pre-mapped frame phases
                     logger.info(f"Frame {frame_idx}: Using frame_phases mapping")
                     phase_found = False
 
-                    for phase_info in cardiac_phases['frame_phases']:
-                        if phase_info['frame_start'] <= frame_idx <= phase_info['frame_end']:
-                            result['cardiac_phase'] = phase_info['phase']
-                            if 'beat_number' in phase_info:
-                                result['beat_number'] = phase_info['beat_number']
-                            logger.info(f"Frame {frame_idx}: Added cardiac phase '{result['cardiac_phase']}' "
-                                      f"({phase_info['phase_name']}) "
-                                      f"Beat {phase_info.get('beat_number', 'N/A')} "
-                                      f"(range: {phase_info['frame_start']}-{phase_info['frame_end']})")
+                    for phase_info in cardiac_phases["frame_phases"]:
+                        if phase_info["frame_start"] <= frame_idx <= phase_info["frame_end"]:
+                            result["cardiac_phase"] = phase_info["phase"]
+                            if "beat_number" in phase_info:
+                                result["beat_number"] = phase_info["beat_number"]
+                            logger.info(
+                                f"Frame {frame_idx}: Added cardiac phase '{result['cardiac_phase']}' "
+                                f"({phase_info['phase_name']}) "
+                                f"Beat {phase_info.get('beat_number', 'N/A')} "
+                                f"(range: {phase_info['frame_start']}-{phase_info['frame_end']})"
+                            )
                             phase_found = True
                             break
 
                     if not phase_found:
-                        logger.warning(f"Frame {frame_idx}: No matching cardiac phase found in frame_phases")
-                elif 'phases' in cardiac_phases:
+                        logger.warning(
+                            f"Frame {frame_idx}: No matching cardiac phase found in frame_phases"
+                        )
+                elif "phases" in cardiac_phases:
                     # Fallback to old method
                     logger.info(f"Frame {frame_idx}: Using old phase detection method")
                     phase_found = False
 
-                    for phase_info in cardiac_phases['phases']:
+                    for phase_info in cardiac_phases["phases"]:
                         # Log phase info structure
                         logger.debug(f"Phase info keys: {phase_info.keys()}")
 
-                        if 'frame_start' in phase_info and 'frame_end' in phase_info:
-                            if phase_info['frame_start'] <= frame_idx <= phase_info['frame_end']:
-                                result['cardiac_phase'] = phase_info.get('phase', '')
-                                logger.info(f"Frame {frame_idx}: Added cardiac phase '{result['cardiac_phase']}' "
-                                          f"(range: {phase_info['frame_start']}-{phase_info['frame_end']})")
+                        if "frame_start" in phase_info and "frame_end" in phase_info:
+                            if phase_info["frame_start"] <= frame_idx <= phase_info["frame_end"]:
+                                result["cardiac_phase"] = phase_info.get("phase", "")
+                                logger.info(
+                                    f"Frame {frame_idx}: Added cardiac phase '{result['cardiac_phase']}' "
+                                    f"(range: {phase_info['frame_start']}-{phase_info['frame_end']})"
+                                )
                                 phase_found = True
                                 break
-                        elif 'start_frame' in phase_info and 'end_frame' in phase_info:
-                            if phase_info['start_frame'] <= frame_idx <= phase_info['end_frame']:
-                                result['cardiac_phase'] = phase_info.get('phase', '')
-                                logger.info(f"Frame {frame_idx}: Added cardiac phase '{result['cardiac_phase']}' "
-                                          f"(range: {phase_info['start_frame']}-{phase_info['end_frame']})")
+                        elif "start_frame" in phase_info and "end_frame" in phase_info:
+                            if phase_info["start_frame"] <= frame_idx <= phase_info["end_frame"]:
+                                result["cardiac_phase"] = phase_info.get("phase", "")
+                                logger.info(
+                                    f"Frame {frame_idx}: Added cardiac phase '{result['cardiac_phase']}' "
+                                    f"(range: {phase_info['start_frame']}-{phase_info['end_frame']})"
+                                )
                                 phase_found = True
                                 break
 
@@ -2526,47 +2766,59 @@ class MainWindow(QMainWindow):
                 else:
                     logger.warning(f"Frame {frame_idx}: No 'phases' key in cardiac_phases data")
             else:
-                logger.warning(f"Frame {frame_idx}: No cardiac_phases data available in viewer_widget")
+                logger.warning(
+                    f"Frame {frame_idx}: No cardiac_phases data available in viewer_widget"
+                )
 
                 # Try to get cardiac phase from frame metadata if available
-                if hasattr(self.dicom_parser, 'get_frame_cardiac_phase'):
+                if hasattr(self.dicom_parser, "get_frame_cardiac_phase"):
                     frame_phase = self.dicom_parser.get_frame_cardiac_phase(frame_idx)
                     if frame_phase:
-                        result['cardiac_phase'] = frame_phase
-                        logger.info(f"Frame {frame_idx}: Got cardiac phase from DICOM metadata: '{frame_phase}'")
+                        result["cardiac_phase"] = frame_phase
+                        logger.info(
+                            f"Frame {frame_idx}: Got cardiac phase from DICOM metadata: '{frame_phase}'"
+                        )
                 else:
                     # If no cardiac phase data available, try to estimate based on frame position
                     # This is a simple estimation for demonstration
                     total_frames = self.dicom_parser.get_frame_count()
                     if total_frames > 0:
                         # Simple cyclic pattern estimation
-                        cycle_position = (frame_idx % 30) / 30.0  # Assume ~30 frames per cardiac cycle
+                        cycle_position = (
+                            frame_idx % 30
+                        ) / 30.0  # Assume ~30 frames per cardiac cycle
                         if cycle_position < 0.3:
-                            result['cardiac_phase'] = 'd2'  # End-diastole
+                            result["cardiac_phase"] = "d2"  # End-diastole
                         elif cycle_position < 0.5:
-                            result['cardiac_phase'] = 's1'  # Early-systole
+                            result["cardiac_phase"] = "s1"  # Early-systole
                         elif cycle_position < 0.7:
-                            result['cardiac_phase'] = 's2'  # End-systole
+                            result["cardiac_phase"] = "s2"  # End-systole
                         else:
-                            result['cardiac_phase'] = 'd1'  # Mid-diastole
-                        logger.info(f"Frame {frame_idx}: Estimated cardiac phase: '{result['cardiac_phase']}'")
+                            result["cardiac_phase"] = "d1"  # Mid-diastole
+                        logger.info(
+                            f"Frame {frame_idx}: Estimated cardiac phase: '{result['cardiac_phase']}'"
+                        )
 
         # Display frame if we're on the current frame being processed
         current_frame = self.viewer_widget.current_frame_index
         if frame_idx == current_frame:
             # Update QCA overlay with centerline and points
-            if result.get('success') and hasattr(self.viewer_widget, 'set_qca_overlay'):
+            if result.get("success") and hasattr(self.viewer_widget, "set_qca_overlay"):
                 # Get overlay settings from QCA widget
-                settings = self.qca_widget.get_overlay_settings() if hasattr(self, 'qca_widget') else {
-                    'show_measurements': True,
-                    'show_stenosis': True,
-                    'show_reference': True,
-                    'show_centerline': True,
-                    'color': 'Yellow'
-                }
+                settings = (
+                    self.qca_widget.get_overlay_settings()
+                    if hasattr(self, "qca_widget")
+                    else {
+                        "show_measurements": True,
+                        "show_stenosis": True,
+                        "show_reference": True,
+                        "show_centerline": True,
+                        "color": "Yellow",
+                    }
+                )
 
                 # Add enabled flag
-                settings['enabled'] = True
+                settings["enabled"] = True
 
                 # Set the QCA overlay with centerline and stenosis points
                 self.viewer_widget.set_qca_overlay(result, settings)
@@ -2576,9 +2828,9 @@ class MainWindow(QMainWindow):
         logger.info(f"Sequential: Frame {frame_idx} fully processed")
 
         # Store frame-specific results for later viewing
-        if not hasattr(self.viewer_widget, 'frame_qca_results'):
+        if not hasattr(self.viewer_widget, "frame_qca_results"):
             self.viewer_widget.frame_qca_results = {}
-        if not hasattr(self.viewer_widget, 'frame_segmentation_results'):
+        if not hasattr(self.viewer_widget, "frame_segmentation_results"):
             self.viewer_widget.frame_segmentation_results = {}
 
         self.viewer_widget.frame_qca_results[frame_idx] = qca_result
@@ -2592,213 +2844,282 @@ class MainWindow(QMainWindow):
         print("🎯 [SIGNAL DEBUG] on_sequential_all_completed called!")
         print(f"🎯 [SIGNAL DEBUG] seg_results: {len(seg_results)} frames")
         print(f"🎯 [SIGNAL DEBUG] qca_results: {len(qca_results)} frames")
-        
+
         # Store results
         self.batch_segmentation_results = seg_results
         self.batch_qca_results = qca_results
         self.sequential_qca_results = qca_results  # Store for RWS analysis
-        
+
         # Calculate global reference and recalculate all QCA results with it
         logger.info("=== POST-PROCESSING: Applying global reference to current beat ===")
         self._recalculate_beat_with_global_reference(seg_results, qca_results)
 
         # Close progress dialog
-        if hasattr(self, 'batch_progress'):
+        if hasattr(self, "batch_progress"):
             self.batch_progress.close()
 
         # Update QCA widget with all results
-        if qca_results and hasattr(self, 'qca_widget'):
+        if qca_results and hasattr(self, "qca_widget"):
             # Switch to QCA panel
-            self.activity_bar.set_active_mode('qca')
-            self.on_activity_mode_changed('qca')
+            self.activity_bar.set_active_mode("qca")
+            self.on_activity_mode_changed("qca")
 
             # Update sequential summary in QCA widget
             self.qca_widget.update_sequential_summary(qca_results)
 
         # Show completion message
         if qca_results:
-            QMessageBox.information(self, "Sequential Processing Complete",
-                                  f"Processed {len(qca_results)} frames successfully.\n"
-                                  f"Results are shown in the QCA panel.")
+            QMessageBox.information(
+                self,
+                "Sequential Processing Complete",
+                f"Processed {len(qca_results)} frames successfully.\n"
+                f"Results are shown in the QCA panel.",
+            )
         else:
-            QMessageBox.information(self, "Sequential Processing Complete",
-                                  f"Processed {len(seg_results)} frames successfully.")
+            QMessageBox.information(
+                self,
+                "Sequential Processing Complete",
+                f"Processed {len(seg_results)} frames successfully.",
+            )
 
     def _recalculate_beat_with_global_reference(self, seg_results: dict, qca_results: dict):
         """Calculate global reference diameter and recalculate all QCA results with it"""
         try:
             logger.info("🔄 [POST-PROCESS DEBUG] _recalculate_beat_with_global_reference CALLED!")
             print("🔄 [POST-PROCESS DEBUG] _recalculate_beat_with_global_reference CALLED!")
-            
+
             # NOTE: This function recalculates stenosis percentages using global reference
             # but preserves frame-specific diameter measurements
-            logger.info("📊 Starting global reference calculation to standardize stenosis measurements")
-            
-            logger.info(f"[POST-PROCESS DEBUG] Starting recalculation with QCA analyzer: {self.qca_analyzer}")
-            
+            logger.info(
+                "📊 Starting global reference calculation to standardize stenosis measurements"
+            )
+
+            logger.info(
+                f"[POST-PROCESS DEBUG] Starting recalculation with QCA analyzer: {self.qca_analyzer}"
+            )
+
             # Debug: Check inputs
-            logger.info(f"[POST-PROCESS DEBUG] seg_results type: {type(seg_results)}, length: {len(seg_results) if seg_results else 0}")
-            logger.info(f"[POST-PROCESS DEBUG] qca_results type: {type(qca_results)}, length: {len(qca_results) if qca_results else 0}")
-            
+            logger.info(
+                f"[POST-PROCESS DEBUG] seg_results type: {type(seg_results)}, length: {len(seg_results) if seg_results else 0}"
+            )
+            logger.info(
+                f"[POST-PROCESS DEBUG] qca_results type: {type(qca_results)}, length: {len(qca_results) if qca_results else 0}"
+            )
+
             if not qca_results:
                 logger.warning("No QCA results available for global reference calculation")
                 return
-            
+
             # Collect frame-based reference diameters from QCA results
             frame_reference_diameters = []
-            logger.info(f"[POST-PROCESS DEBUG] Checking {len(qca_results)} QCA results for frame reference diameters...")
-            
+            logger.info(
+                f"[POST-PROCESS DEBUG] Checking {len(qca_results)} QCA results for frame reference diameters..."
+            )
+
             for frame_idx, result in qca_results.items():
-                logger.info(f"[POST-PROCESS DEBUG] Frame {frame_idx}: success={result.get('success')}, has_frame_reference={'frame_reference_diameter' in result if result else False}")
-                
-                if result.get('success') and 'frame_reference_diameter' in result:
-                    frame_ref = result['frame_reference_diameter']
+                logger.info(
+                    f"[POST-PROCESS DEBUG] Frame {frame_idx}: success={result.get('success')}, has_frame_reference={'frame_reference_diameter' in result if result else False}"
+                )
+
+                if result.get("success") and "frame_reference_diameter" in result:
+                    frame_ref = result["frame_reference_diameter"]
                     if frame_ref is not None and frame_ref > 0:
                         frame_reference_diameters.append(frame_ref)
-                        logger.info(f"[POST-PROCESS DEBUG] Frame {frame_idx}: Frame reference diameter: {frame_ref:.2f}mm")
+                        logger.info(
+                            f"[POST-PROCESS DEBUG] Frame {frame_idx}: Frame reference diameter: {frame_ref:.2f}mm"
+                        )
                     else:
-                        logger.info(f"[POST-PROCESS DEBUG] Frame {frame_idx}: Invalid frame reference diameter")
+                        logger.info(
+                            f"[POST-PROCESS DEBUG] Frame {frame_idx}: Invalid frame reference diameter"
+                        )
                 else:
-                    logger.info(f"[POST-PROCESS DEBUG] Frame {frame_idx}: No frame_reference_diameter found in result")
-            
+                    logger.info(
+                        f"[POST-PROCESS DEBUG] Frame {frame_idx}: No frame_reference_diameter found in result"
+                    )
+
             if len(frame_reference_diameters) == 0:
                 logger.warning("No valid frame reference diameters found in QCA results")
                 return
-            
+
             # Calculate global reference diameter (75th percentile of frame references)
             import numpy as np
+
             global_reference_diameter = np.percentile(frame_reference_diameters, 75)
-            logger.info(f"[POST-PROCESS DEBUG] Calculated global_reference_diameter: {global_reference_diameter}")
-            
+            logger.info(
+                f"[POST-PROCESS DEBUG] Calculated global_reference_diameter: {global_reference_diameter}"
+            )
+
             logger.info(f"=== GLOBAL REFERENCE DIAMETER CALCULATED ===")
             logger.info(f"Total frame reference diameters: {len(frame_reference_diameters)}")
-            logger.info(f"Frame reference range: {np.min(frame_reference_diameters):.2f} - {np.max(frame_reference_diameters):.2f} mm")
-            logger.info(f"75th percentile of frame references (Global Reference): {global_reference_diameter:.2f} mm")
-            
+            logger.info(
+                f"Frame reference range: {np.min(frame_reference_diameters):.2f} - {np.max(frame_reference_diameters):.2f} mm"
+            )
+            logger.info(
+                f"75th percentile of frame references (Global Reference): {global_reference_diameter:.2f} mm"
+            )
+
             # Now recalculate all frames with global reference
             logger.info("Recalculating all QCA results with global reference...")
             updated_qca_results = {}
-            
+
             for frame_idx, seg_result in seg_results.items():
                 try:
-                    logger.info(f"[POST-PROCESS DEBUG] Processing frame {frame_idx}: seg_result_success={seg_result.get('success') if seg_result else False}")
-                    if seg_result and seg_result.get('success'):
+                    logger.info(
+                        f"[POST-PROCESS DEBUG] Processing frame {frame_idx}: seg_result_success={seg_result.get('success') if seg_result else False}"
+                    )
+                    if seg_result and seg_result.get("success"):
                         # Get tracking points for this frame
                         tracking_points = None
                         # Try to get tracking points from segmentation result first
-                        if 'reference_points' in seg_result:
-                            tracking_points = seg_result['reference_points']
-                            logger.info(f"[POST-PROCESS DEBUG] Frame {frame_idx}: Got tracking points from seg_result")
+                        if "reference_points" in seg_result:
+                            tracking_points = seg_result["reference_points"]
+                            logger.info(
+                                f"[POST-PROCESS DEBUG] Frame {frame_idx}: Got tracking points from seg_result"
+                            )
                         else:
                             # Fallback to overlay_item
-                            if hasattr(self, 'viewer_widget'):
-                                overlay_item = getattr(self.viewer_widget, 'overlay_item', None)
-                                if overlay_item and hasattr(overlay_item, 'get_frame_points'):
+                            if hasattr(self, "viewer_widget"):
+                                overlay_item = getattr(self.viewer_widget, "overlay_item", None)
+                                if overlay_item and hasattr(overlay_item, "get_frame_points"):
                                     tracking_points = overlay_item.get_frame_points(frame_idx)
-                                elif overlay_item and hasattr(overlay_item, 'frame_points'):
+                                elif overlay_item and hasattr(overlay_item, "frame_points"):
                                     tracking_points = overlay_item.frame_points.get(frame_idx, [])
-                            logger.info(f"[POST-PROCESS DEBUG] Frame {frame_idx}: Got tracking points from overlay_item")
-                        
-                        logger.info(f"[POST-PROCESS DEBUG] Frame {frame_idx}: tracking_points={len(tracking_points) if tracking_points else 0}")
+                            logger.info(
+                                f"[POST-PROCESS DEBUG] Frame {frame_idx}: Got tracking points from overlay_item"
+                            )
+
+                        logger.info(
+                            f"[POST-PROCESS DEBUG] Frame {frame_idx}: tracking_points={len(tracking_points) if tracking_points else 0}"
+                        )
                         if tracking_points and len(tracking_points) >= 2:
                             # Get original frame
-                            logger.info(f"[POST-PROCESS DEBUG] Frame {frame_idx}: Getting frame data...")
-                            frame = self.dicom_parser.get_frame(frame_idx)  # Use dicom_parser instead
+                            logger.info(
+                                f"[POST-PROCESS DEBUG] Frame {frame_idx}: Getting frame data..."
+                            )
+                            frame = self.dicom_parser.get_frame(
+                                frame_idx
+                            )  # Use dicom_parser instead
                             if frame is None:
-                                logger.error(f"[POST-PROCESS DEBUG] Frame {frame_idx}: Failed to get frame data")
+                                logger.error(
+                                    f"[POST-PROCESS DEBUG] Frame {frame_idx}: Failed to get frame data"
+                                )
                                 continue
-                            
+
                             # Use existing segmentation result which already has centerline from tracking points
                             # Recalculate QCA with global reference (direct analyze_vessel call)
-                            logger.info(f"[POST-PROCESS DEBUG] About to call analyze_vessel with global_reference_diameter: {global_reference_diameter}")
-                            
+                            logger.info(
+                                f"[POST-PROCESS DEBUG] About to call analyze_vessel with global_reference_diameter: {global_reference_diameter}"
+                            )
+
                             # Get centerline from original QCA result (it was calculated with tracking points)
                             original_qca = qca_results[frame_idx]
-                            if 'centerline' not in original_qca:
-                                logger.error(f"[POST-PROCESS DEBUG] Frame {frame_idx}: No centerline in original QCA result")
+                            if "centerline" not in original_qca:
+                                logger.error(
+                                    f"[POST-PROCESS DEBUG] Frame {frame_idx}: No centerline in original QCA result"
+                                )
                                 continue
-                                
-                            centerline = np.array(original_qca['centerline'])
-                            
+
+                            np.array(original_qca["centerline"])
+
                             # Ensure QCA analyzer has correct calibration factor
-                            if hasattr(self, 'calibration_factor') and self.calibration_factor:
+                            if hasattr(self, "calibration_factor") and self.calibration_factor:
                                 self.qca_analyzer.calibration_factor = self.calibration_factor
-                                logger.info(f"[POST-PROCESS DEBUG] Set calibration_factor to: {self.calibration_factor}")
+                                logger.info(
+                                    f"[POST-PROCESS DEBUG] Set calibration_factor to: {self.calibration_factor}"
+                                )
                             else:
-                                logger.warning(f"[POST-PROCESS DEBUG] No calibration_factor available")
-                            
+                                logger.warning(
+                                    f"[POST-PROCESS DEBUG] No calibration_factor available"
+                                )
+
                             # IMPORTANT: Use analyze_from_angiopy to preserve frame-specific diameters
                             # analyze_vessel with same centerline produces same results
-                            logger.info(f"[POST-PROCESS DEBUG] Re-analyzing frame {frame_idx} with global reference")
-                            
+                            logger.info(
+                                f"[POST-PROCESS DEBUG] Re-analyzing frame {frame_idx} with global reference"
+                            )
+
                             # Get original frame for diameter measurement
                             original_image = frame
-                            
+
                             # Extract proximal and distal points from tracking points
-                            proximal_point = tracking_points[0] if len(tracking_points) > 0 else None
+                            proximal_point = (
+                                tracking_points[0] if len(tracking_points) > 0 else None
+                            )
                             distal_point = tracking_points[-1] if len(tracking_points) > 1 else None
-                            
+
                             # Use segmentation-based method to preserve frame-specific diameters
                             # Global reference is only used for stenosis calculation
                             use_gradient_method = False
-                            gradient_method = 'second_derivative'
-                            
+                            gradient_method = "second_derivative"
+
                             updated_result = self.qca_analyzer.analyze_from_angiopy(
                                 seg_result,
                                 original_image=original_image,
                                 proximal_point=proximal_point,
                                 distal_point=distal_point,
-                                tracked_points=tracking_points if len(tracking_points) >= 2 else None,
+                                tracked_points=(
+                                    tracking_points if len(tracking_points) >= 2 else None
+                                ),
                                 use_tracked_centerline=True,
                                 use_gradient_method=use_gradient_method,
                                 gradient_method=gradient_method,
-                                global_reference_diameter=global_reference_diameter
+                                global_reference_diameter=global_reference_diameter,
                             )
-                            
-                            if updated_result.get('success'):
+
+                            if updated_result.get("success"):
                                 # Add frame metadata from original QCA result
                                 original_qca = qca_results[frame_idx]
-                                updated_result['frame_index'] = frame_idx
-                                updated_result['display_frame_id'] = frame_idx + 1  # UI shows 1-based
-                                
+                                updated_result["frame_index"] = frame_idx
+                                updated_result["display_frame_id"] = (
+                                    frame_idx + 1
+                                )  # UI shows 1-based
+
                                 # Copy cardiac phase info from original result
-                                if 'cardiac_phase' in original_qca:
-                                    updated_result['cardiac_phase'] = original_qca['cardiac_phase']
-                                if 'frame_type' in original_qca:
-                                    updated_result['frame_type'] = original_qca['frame_type']
-                                if 'phase' in original_qca:
-                                    updated_result['phase'] = original_qca['phase']
-                                
+                                if "cardiac_phase" in original_qca:
+                                    updated_result["cardiac_phase"] = original_qca["cardiac_phase"]
+                                if "frame_type" in original_qca:
+                                    updated_result["frame_type"] = original_qca["frame_type"]
+                                if "phase" in original_qca:
+                                    updated_result["phase"] = original_qca["phase"]
+
                                 # Get cardiac phase from main window's phase mapping if available
-                                if hasattr(self, 'phase_frames') and frame_idx in self.phase_frames:
+                                if hasattr(self, "phase_frames") and frame_idx in self.phase_frames:
                                     phase_info = self.phase_frames[frame_idx]
-                                    updated_result['cardiac_phase'] = phase_info.get('phase', '')
-                                    updated_result['frame_type'] = phase_info.get('type', '')
-                                
+                                    updated_result["cardiac_phase"] = phase_info.get("phase", "")
+                                    updated_result["frame_type"] = phase_info.get("type", "")
+
                                 updated_qca_results[frame_idx] = updated_result
-                                logger.info(f"Frame {frame_idx}: Updated with global reference - "
-                                          f"MLD: {updated_result.get('mld', 0):.3f}mm, "
-                                          f"Ref: {global_reference_diameter:.2f}mm, "
-                                          f"Stenosis: {updated_result['percent_stenosis']:.1f}%")
-                            
+                                logger.info(
+                                    f"Frame {frame_idx}: Updated with global reference - "
+                                    f"MLD: {updated_result.get('mld', 0):.3f}mm, "
+                                    f"Ref: {global_reference_diameter:.2f}mm, "
+                                    f"Stenosis: {updated_result['percent_stenosis']:.1f}%"
+                                )
+
                 except Exception as e:
                     logger.error(f"Failed to update QCA for frame {frame_idx}: {e}")
                     continue
-            
+
             if updated_qca_results:
                 # Replace old results with updated ones
                 self.batch_qca_results.update(updated_qca_results)
                 self.sequential_qca_results.update(updated_qca_results)
-                
+
                 # Update QCA widget with recalculated results
-                if hasattr(self, 'qca_widget'):
+                if hasattr(self, "qca_widget"):
                     self.qca_widget.update_sequential_summary(updated_qca_results)
-                    logger.info(f"Updated QCA widget with {len(updated_qca_results)} recalculated results")
-                
+                    logger.info(
+                        f"Updated QCA widget with {len(updated_qca_results)} recalculated results"
+                    )
+
                 logger.info(f"=== BEAT RECALCULATION COMPLETE ===")
-                logger.info(f"Successfully updated {len(updated_qca_results)} QCA results with global reference")
-                logger.info(f"All frames in current beat now use consistent global reference: {global_reference_diameter:.2f}mm")
-            
+                logger.info(
+                    f"Successfully updated {len(updated_qca_results)} QCA results with global reference"
+                )
+                logger.info(
+                    f"All frames in current beat now use consistent global reference: {global_reference_diameter:.2f}mm"
+                )
+
         except Exception as e:
             logger.error(f"Global reference calculation failed: {e}")
 
@@ -2806,22 +3127,30 @@ class MainWindow(QMainWindow):
         """Get cardiac phase information for a specific frame"""
         try:
             # Check if we have cardiac phase analysis
-            if hasattr(self, 'ekg_viewer') and self.ekg_viewer and hasattr(self.ekg_viewer, 'phase_analysis'):
+            if (
+                hasattr(self, "ekg_viewer")
+                and self.ekg_viewer
+                and hasattr(self.ekg_viewer, "phase_analysis")
+            ):
                 phase_analysis = self.ekg_viewer.phase_analysis
-                if phase_analysis and hasattr(phase_analysis, 'phases'):
+                if phase_analysis and hasattr(phase_analysis, "phases"):
                     for phase_name, frame_list in phase_analysis.phases.items():
                         if frame_idx in frame_list:
-                            return {'phase': phase_name, 'type': phase_name}
-            
+                            return {"phase": phase_name, "type": phase_name}
+
             # Fallback: check if frame is in specific beat ranges
-            if hasattr(self, 'phase_transitions') and self.phase_transitions:
+            if hasattr(self, "phase_transitions") and self.phase_transitions:
                 for transition in self.phase_transitions:
-                    if transition.get('start_frame', 0) <= frame_idx <= transition.get('end_frame', 0):
+                    if (
+                        transition.get("start_frame", 0)
+                        <= frame_idx
+                        <= transition.get("end_frame", 0)
+                    ):
                         return {
-                            'phase': transition.get('phase', 'unknown'),
-                            'type': transition.get('phase', 'unknown')
+                            "phase": transition.get("phase", "unknown"),
+                            "type": transition.get("phase", "unknown"),
                         }
-            
+
             return {}
         except Exception as e:
             logger.warning(f"Failed to get cardiac phase for frame {frame_idx}: {e}")
@@ -2837,13 +3166,18 @@ class MainWindow(QMainWindow):
     def show_qca_results_summary_OLD(self, qca_results: dict):
         """DEPRECATED: Now integrated into QCA widget"""
         # This method is no longer used - results are shown in QCA widget
-        pass
 
     def _show_qca_results_summary_dialog(self, qca_results: dict):
         """Show a summary of QCA results in a table dialog (backup method)"""
-        from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem,
-                                   QPushButton, QHBoxLayout, QHeaderView)
-        from PyQt6.QtCore import Qt
+        from PyQt6.QtWidgets import (
+            QDialog,
+            QVBoxLayout,
+            QTableWidget,
+            QTableWidgetItem,
+            QPushButton,
+            QHBoxLayout,
+            QHeaderView,
+        )
 
         # Create dialog
         dialog = QDialog(self)
@@ -2858,28 +3192,45 @@ class MainWindow(QMainWindow):
         table.setRowCount(len(qca_results))
 
         # Define columns
-        columns = ["Frame", "Cardiac Phase", "Stenosis %", "MLD (mm)", "RVD (mm)",
-                  "Lesion Length (mm)", "Area Stenosis %", "MLA (mm²)", "RVA (mm²)"]
+        columns = [
+            "Frame",
+            "Cardiac Phase",
+            "Stenosis %",
+            "MLD (mm)",
+            "RVD (mm)",
+            "Lesion Length (mm)",
+            "Area Stenosis %",
+            "MLA (mm²)",
+            "RVA (mm²)",
+        ]
         table.setColumnCount(len(columns))
         table.setHorizontalHeaderLabels(columns)
 
         # Cardiac phase mapping (phase transition names)
         cardiac_phases = {
-            'd2': 'End-diastole',
-            's1': 'Early-systole',
-            's2': 'End-systole',
-            'd1': 'Mid-diastole'
+            "d2": "End-diastole",
+            "s1": "Early-systole",
+            "s2": "End-systole",
+            "d1": "Mid-diastole",
         }
 
         # Get cardiac phase data if available
         cardiac_phase_data = {}
-        if hasattr(self, 'ekg_parser') and self.ekg_parser and hasattr(self.ekg_parser, 'cardiac_phases'):
+        if (
+            hasattr(self, "ekg_parser")
+            and self.ekg_parser
+            and hasattr(self.ekg_parser, "cardiac_phases")
+        ):
             # Calculate frame times and map to cardiac phases
-            frame_rate = self.dicom_parser.get_frame_rate() if hasattr(self, 'dicom_parser') else 30.0
+            frame_rate = (
+                self.dicom_parser.get_frame_rate() if hasattr(self, "dicom_parser") else 30.0
+            )
             frame_duration = 1.0 / frame_rate  # seconds per frame
 
             # Debug logging
-            logger.info(f"Frame rate: {frame_rate} fps, Frame duration: {frame_duration:.4f} seconds")
+            logger.info(
+                f"Frame rate: {frame_rate} fps, Frame duration: {frame_duration:.4f} seconds"
+            )
 
             for frame_idx in qca_results.keys():
                 frame_time = frame_idx * frame_duration
@@ -2888,32 +3239,34 @@ class MainWindow(QMainWindow):
                     cardiac_phase_data[frame_idx] = phase
                     logger.debug(f"Frame {frame_idx}: time={frame_time:.3f}s, phase={phase}")
                 else:
-                    logger.warning(f"No phase found for frame {frame_idx} at time {frame_time:.3f}s")
+                    logger.warning(
+                        f"No phase found for frame {frame_idx} at time {frame_time:.3f}s"
+                    )
 
         # Populate table
         row = 0
         for frame_idx in sorted(qca_results.keys()):
             result = qca_results[frame_idx]
-            if not result.get('success'):
+            if not result.get("success"):
                 continue
 
             # Frame number
             table.setItem(row, 0, QTableWidgetItem(str(frame_idx)))
 
             # Cardiac phase
-            phase = cardiac_phase_data.get(frame_idx, '')
+            phase = cardiac_phase_data.get(frame_idx, "")
             phase_text = cardiac_phases.get(phase, phase)
             table.setItem(row, 1, QTableWidgetItem(phase_text))
 
             # QCA parameters - map the actual keys from QCA results
             params = [
-                ('percent_stenosis', 2, "{:.1f}"),
-                ('mld', 3, "{:.2f}"),  # MLD in mm
-                ('reference_diameter', 4, "{:.2f}"),  # RVD in mm
-                ('lesion_length', 5, "{:.2f}"),  # Lesion length in mm
-                ('percent_area_stenosis', 6, "{:.1f}"),  # Area stenosis %
-                ('mla', 7, "{:.2f}"),  # MLA in mm²
-                ('reference_area', 8, "{:.2f}")  # RVA in mm²
+                ("percent_stenosis", 2, "{:.1f}"),
+                ("mld", 3, "{:.2f}"),  # MLD in mm
+                ("reference_diameter", 4, "{:.2f}"),  # RVD in mm
+                ("lesion_length", 5, "{:.2f}"),  # Lesion length in mm
+                ("percent_area_stenosis", 6, "{:.1f}"),  # Area stenosis %
+                ("mla", 7, "{:.2f}"),  # MLA in mm²
+                ("reference_area", 8, "{:.2f}"),  # RVA in mm²
             ]
 
             for param, col, fmt in params:
@@ -2945,14 +3298,20 @@ class MainWindow(QMainWindow):
         layout.addWidget(table)
 
         # Add summary statistics
-        stenosis_values = [r['percent_stenosis'] for r in qca_results.values()
-                          if r.get('success') and 'percent_stenosis' in r]
+        stenosis_values = [
+            r["percent_stenosis"]
+            for r in qca_results.values()
+            if r.get("success") and "percent_stenosis" in r
+        ]
 
         if stenosis_values:
             from PyQt6.QtWidgets import QLabel
-            summary_text = (f"Summary: Average stenosis: {sum(stenosis_values)/len(stenosis_values):.1f}%, "
-                          f"Maximum: {max(stenosis_values):.1f}%, "
-                          f"Minimum: {min(stenosis_values):.1f}%")
+
+            summary_text = (
+                f"Summary: Average stenosis: {sum(stenosis_values)/len(stenosis_values):.1f}%, "
+                f"Maximum: {max(stenosis_values):.1f}%, "
+                f"Minimum: {min(stenosis_values):.1f}%"
+            )
             summary_label = QLabel(summary_text)
             layout.addWidget(summary_label)
 
@@ -2960,7 +3319,9 @@ class MainWindow(QMainWindow):
         button_layout = QHBoxLayout()
 
         export_btn = QPushButton("Export CSV")
-        export_btn.clicked.connect(lambda: self.export_qca_results_csv(qca_results, cardiac_phase_data, cardiac_phases))
+        export_btn.clicked.connect(
+            lambda: self.export_qca_results_csv(qca_results, cardiac_phase_data, cardiac_phases)
+        )
         button_layout.addWidget(export_btn)
 
         close_btn = QPushButton("Close")
@@ -2974,7 +3335,9 @@ class MainWindow(QMainWindow):
         self.qca_results_dialog = dialog
         dialog.show()
 
-    def export_qca_results_csv(self, qca_results: dict, cardiac_phase_data: dict, cardiac_phases: dict):
+    def export_qca_results_csv(
+        self, qca_results: dict, cardiac_phase_data: dict, cardiac_phases: dict
+    ):
         """Export QCA results to CSV file"""
         from PyQt6.QtWidgets import QFileDialog, QMessageBox
         import csv
@@ -2984,29 +3347,40 @@ class MainWindow(QMainWindow):
         )
 
         if file_path:
-            with open(file_path, 'w', newline='') as csvfile:
-                fieldnames = ['Frame', 'Cardiac Phase', 'Stenosis %', 'MLD (mm)', 'RVD (mm)',
-                            'Lesion Length (mm)', 'Area Stenosis %', 'MLA (mm²)', 'RVA (mm²)']
+            with open(file_path, "w", newline="") as csvfile:
+                fieldnames = [
+                    "Frame",
+                    "Cardiac Phase",
+                    "Stenosis %",
+                    "MLD (mm)",
+                    "RVD (mm)",
+                    "Lesion Length (mm)",
+                    "Area Stenosis %",
+                    "MLA (mm²)",
+                    "RVA (mm²)",
+                ]
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
                 writer.writeheader()
                 for frame_idx in sorted(qca_results.keys()):
                     result = qca_results[frame_idx]
-                    if result.get('success'):
-                        phase = cardiac_phase_data.get(frame_idx, '')
+                    if result.get("success"):
+                        phase = cardiac_phase_data.get(frame_idx, "")
                         phase_text = cardiac_phases.get(phase, phase)
 
-                        writer.writerow({
-                            'Frame': frame_idx,
-                            'Cardiac Phase': phase_text,
-                            'Stenosis %': f"{result.get('percent_stenosis', 0):.1f}",
-                            'MLD (mm)': f"{result.get('mld', 0):.3f}",
-                            'RVD (mm)': f"{result.get('reference_diameter', 0):.2f}",
-                            'Lesion Length (mm)': f"{result.get('lesion_length', 0):.2f}",
-                            'Area Stenosis %': f"{result.get('percent_area_stenosis', 0):.1f}",
-                            'MLA (mm²)': f"{result.get('mla', 0):.2f}",
-                            'RVA (mm²)': f"{result.get('reference_area', 0):.2f}"
-                        })
+                        writer.writerow(
+                            {
+                                "Frame": frame_idx,
+                                "Cardiac Phase": phase_text,
+                                "Stenosis %": f"{result.get('percent_stenosis', 0):.1f}",
+                                "MLD (mm)": f"{result.get('mld', 0):.3f}",
+                                "RVD (mm)": f"{result.get('reference_diameter', 0):.2f}",
+                                "Lesion Length (mm)": f"{result.get('lesion_length', 0):.2f}",
+                                "Area Stenosis %": f"{result.get('percent_area_stenosis', 0):.1f}",
+                                "MLA (mm²)": f"{result.get('mla', 0):.2f}",
+                                "RVA (mm²)": f"{result.get('reference_area', 0):.2f}",
+                            }
+                        )
 
             QMessageBox.information(self, "Export Complete", f"Results exported to {file_path}")
 
@@ -3023,12 +3397,15 @@ class MainWindow(QMainWindow):
 
         # Check if we have tracking points
         tracked_frames = []
-        if hasattr(self.viewer_widget, 'overlay_item') and hasattr(self.viewer_widget.overlay_item, 'frame_points'):
+        if hasattr(self.viewer_widget, "overlay_item") and hasattr(
+            self.viewer_widget.overlay_item, "frame_points"
+        ):
             tracked_frames = sorted(self.viewer_widget.overlay_item.frame_points.keys())
 
         if not tracked_frames:
-            QMessageBox.warning(self, "No Tracking Points",
-                              "Please track vessel points first using Tracking Mode.")
+            QMessageBox.warning(
+                self, "No Tracking Points", "Please track vessel points first using Tracking Mode."
+            )
             return
 
         # Get the range of tracked frames
@@ -3039,14 +3416,15 @@ class MainWindow(QMainWindow):
         msg = QMessageBox(self)
         msg.setWindowTitle("Sequential Processing")
         msg.setText(f"Found {len(tracked_frames)} tracked frames")
-        msg.setInformativeText(f"Process frames {start_frame + 1} to {end_frame + 1}?\n\n"
-                             f"This will run segmentation and QCA analysis on all tracked frames.")
+        msg.setInformativeText(
+            f"Process frames {start_frame + 1} to {end_frame + 1}?\n\n"
+            f"This will run segmentation and QCA analysis on all tracked frames."
+        )
         msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         msg.setIcon(QMessageBox.Icon.Question)
 
         if msg.exec() == QMessageBox.StandardButton.Yes:
             self.run_sequential_processing(start_frame, end_frame)
-
 
     def start_qca_analysis(self):
         """Start QCA analysis"""
@@ -3060,8 +3438,9 @@ class MainWindow(QMainWindow):
 
         # Pass calibration to QCA widget
         if self.calibration_factor:
-            self.qca_widget.set_calibration(self.calibration_factor,
-                                           getattr(self, 'calibration_details', None))
+            self.qca_widget.set_calibration(
+                self.calibration_factor, getattr(self, "calibration_details", None)
+            )
 
     def start_qca_from_segmentation(self, segmentation_result):
         """Start QCA analysis using AngioPy segmentation data"""
@@ -3071,11 +3450,12 @@ class MainWindow(QMainWindow):
 
         # Pass calibration to QCA widget
         if self.calibration_factor:
-            self.qca_widget.set_calibration(self.calibration_factor,
-                                           getattr(self, 'calibration_details', None))
+            self.qca_widget.set_calibration(
+                self.calibration_factor, getattr(self, "calibration_details", None)
+            )
 
         # Check if reference points are provided in segmentation result
-        reference_points = segmentation_result.get('reference_points', None)
+        reference_points = segmentation_result.get("reference_points", None)
         if reference_points:
             logger.info(f"Starting QCA with reference points: {reference_points}")
             # Store reference points in QCA widget for later use
@@ -3094,13 +3474,16 @@ class MainWindow(QMainWindow):
             return
 
         # Show tracking tips when starting segmentation
-        QMessageBox.information(self, "Tracking Tips",
+        QMessageBox.information(
+            self,
+            "Tracking Tips",
             "For optimal tracking results:\n\n"
             "• Select vessel bifurcations (Y-shaped junctions)\n"
             "• Choose stent edges or markers\n"
             "• Pick catheter tips or distinctive features\n"
             "• Avoid uniform vessel segments\n\n"
-            "CoTracker3 will track the exact points you select.")
+            "CoTracker3 will track the exact points you select.",
+        )
 
         # Switch to Segmentation mode
         self.activity_bar.set_active_mode("segmentation")
@@ -3125,12 +3508,12 @@ class MainWindow(QMainWindow):
             self,
             "Save Image",
             str(Path.home() / "coronary_image.png"),
-            "PNG Files (*.png);;JPEG Files (*.jpg *.jpeg);;All Files (*)"
+            "PNG Files (*.png);;JPEG Files (*.jpg *.jpeg);;All Files (*)",
         )
 
         if file_path:
             # Get current pixmap from viewer
-            if hasattr(self.viewer_widget, 'get_current_pixmap'):
+            if hasattr(self.viewer_widget, "get_current_pixmap"):
                 pixmap = self.viewer_widget.get_current_pixmap()
                 if pixmap:
                     pixmap.save(file_path)
@@ -3142,8 +3525,11 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "No Data", "No frames to export.")
             return
 
-        QMessageBox.information(self, "Export Video",
-                              "Video export functionality will be implemented in a future version.")
+        QMessageBox.information(
+            self,
+            "Export Video",
+            "Video export functionality will be implemented in a future version.",
+        )
 
     def export_analysis_report(self, format_type="pdf"):
         """Export analysis report in various formats"""
@@ -3157,7 +3543,7 @@ class MainWindow(QMainWindow):
         elif format_type == "txt":
             self.export_txt_report()
             return
-        
+
         # Fallback: show preview dialog
         report_text = self._generate_analysis_report()
         self._show_report_preview(report_text)
@@ -3165,155 +3551,175 @@ class MainWindow(QMainWindow):
     def update_analysis_report(self):
         """Update analysis report - now just triggers UI updates"""
         # Since we removed the report panel, just update any status displays
-        pass
 
     def _generate_analysis_report(self) -> str:
         """Generate comprehensive analysis report text"""
         from datetime import datetime
-        
+
         report_lines = []
-        
+
         # Header
         report_lines.append("=" * 80)
         report_lines.append("CORONARY ANALYSIS COMPREHENSIVE REPORT")
         report_lines.append("=" * 80)
         report_lines.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         report_lines.append("")
-        
+
         # Patient Information
         patient_name = ""
-        if hasattr(self, 'dicom_parser') and self.dicom_parser and self.dicom_parser.dicom_data:
+        if hasattr(self, "dicom_parser") and self.dicom_parser and self.dicom_parser.dicom_data:
             dicom_data = self.dicom_parser.dicom_data
-            if hasattr(dicom_data, 'PatientName'):
-                patient_name = str(getattr(dicom_data, 'PatientName', ''))
-        
+            if hasattr(dicom_data, "PatientName"):
+                patient_name = str(getattr(dicom_data, "PatientName", ""))
+
         if patient_name:
             report_lines.append("PATIENT INFORMATION")
             report_lines.append("-" * 40)
             report_lines.append(f"Patient Name: {patient_name}")
-            if hasattr(dicom_data, 'PatientID'):
+            if hasattr(dicom_data, "PatientID"):
                 report_lines.append(f"Patient ID: {getattr(dicom_data, 'PatientID', 'N/A')}")
-            if hasattr(dicom_data, 'StudyDescription'):
+            if hasattr(dicom_data, "StudyDescription"):
                 report_lines.append(f"Study: {getattr(dicom_data, 'StudyDescription', 'N/A')}")
             report_lines.append("")
-        
+
         # Calibration Information
         report_lines.append("CALIBRATION INFORMATION")
         report_lines.append("-" * 40)
-        if hasattr(self, 'calibration_factor') and self.calibration_factor:
+        if hasattr(self, "calibration_factor") and self.calibration_factor:
             report_lines.append(f"Calibration Factor: {self.calibration_factor:.5f} mm/pixel")
-            if hasattr(self, 'calibration_details'):
-                report_lines.append(f"Method: {self.calibration_details.get('method', 'Manual catheter calibration')}")
-                report_lines.append(f"Catheter Size: {self.calibration_details.get('catheter_size', 'Unknown')}")
+            if hasattr(self, "calibration_details"):
+                report_lines.append(
+                    f"Method: {self.calibration_details.get('method', 'Manual catheter calibration')}"
+                )
+                report_lines.append(
+                    f"Catheter Size: {self.calibration_details.get('catheter_size', 'Unknown')}"
+                )
         else:
             report_lines.append("Calibration: Not performed")
-        
-        if hasattr(self, 'dicom_parser') and self.dicom_parser and self.dicom_parser.pixel_spacing:
-            report_lines.append(f"DICOM Pixel Spacing: {self.dicom_parser.pixel_spacing:.5f} mm/pixel")
+
+        if hasattr(self, "dicom_parser") and self.dicom_parser and self.dicom_parser.pixel_spacing:
+            report_lines.append(
+                f"DICOM Pixel Spacing: {self.dicom_parser.pixel_spacing:.5f} mm/pixel"
+            )
         report_lines.append("")
-        
+
         # QCA Analysis Results
         report_lines.append("QCA ANALYSIS RESULTS")
         report_lines.append("-" * 40)
-        
+
         qca_results = None
-        if hasattr(self, 'qca_widget') and hasattr(self.qca_widget, 'analysis_result'):
+        if hasattr(self, "qca_widget") and hasattr(self.qca_widget, "analysis_result"):
             qca_results = self.qca_widget.analysis_result
-        elif hasattr(self, 'sequential_qca_results'):
+        elif hasattr(self, "sequential_qca_results"):
             qca_results = self.sequential_qca_results
-        
+
         if qca_results and isinstance(qca_results, dict):
             valid_results = []
             for frame_idx, result in qca_results.items():
-                if isinstance(frame_idx, int) and isinstance(result, dict) and result.get('success'):
+                if (
+                    isinstance(frame_idx, int)
+                    and isinstance(result, dict)
+                    and result.get("success")
+                ):
                     valid_results.append((frame_idx, result))
-            
+
             if valid_results:
                 report_lines.append(f"Total Frames Analyzed: {len(valid_results)}")
                 report_lines.append("")
                 report_lines.append("Frame  | Stenosis(%) | MLD(mm) | Ref.Dia(mm) | Lesion Len(mm)")
                 report_lines.append("-" * 65)
-                
+
                 for frame_idx, result in sorted(valid_results):
-                    stenosis = result.get('percent_stenosis', 0)
-                    mld = result.get('mld', 0) or result.get('minimum_diameter', 0)
-                    ref_dia = result.get('reference_diameter', 0)
-                    lesion_len = result.get('lesion_length', 0)
-                    
-                    report_lines.append(f"{frame_idx:5d}  | {stenosis:8.1f}    | {mld:6.2f}  | {ref_dia:9.2f}   | {lesion_len:10.2f}")
+                    stenosis = result.get("percent_stenosis", 0)
+                    mld = result.get("mld", 0) or result.get("minimum_diameter", 0)
+                    ref_dia = result.get("reference_diameter", 0)
+                    lesion_len = result.get("lesion_length", 0)
+
+                    report_lines.append(
+                        f"{frame_idx:5d}  | {stenosis:8.1f}    | {mld:6.2f}  | {ref_dia:9.2f}   | {lesion_len:10.2f}"
+                    )
             else:
                 report_lines.append("No valid QCA results available")
         else:
             report_lines.append("No QCA analysis performed")
         report_lines.append("")
-        
+
         # RWS Analysis Results
         report_lines.append("RWS ANALYSIS RESULTS")
         report_lines.append("-" * 40)
-        
+
         # Get RWS results using the same logic as Excel export
         rws_results = None
-        if hasattr(self, 'rws_enhanced_results') and self.rws_enhanced_results:
+        if hasattr(self, "rws_enhanced_results") and self.rws_enhanced_results:
             rws_results = self.rws_enhanced_results
-        elif hasattr(self, 'rws_enhanced_widget') and hasattr(self.rws_enhanced_widget, 'analysis_results'):
+        elif hasattr(self, "rws_enhanced_widget") and hasattr(
+            self.rws_enhanced_widget, "analysis_results"
+        ):
             rws_results = self.rws_enhanced_widget.analysis_results
-        elif hasattr(self, 'rws_widget') and hasattr(self.rws_widget, 'results'):
+        elif hasattr(self, "rws_widget") and hasattr(self.rws_widget, "results"):
             rws_results = self.rws_widget.results
-        
+
         if rws_results and isinstance(rws_results, dict):
             # Check if this is Enhanced RWS results format
-            if 'stenosis_rws' in rws_results:
-                stenosis_rws = rws_results['stenosis_rws']
-                rws_val = stenosis_rws.get('rws_stenosis', 0)
-                
+            if "stenosis_rws" in rws_results:
+                stenosis_rws = rws_results["stenosis_rws"]
+                rws_val = stenosis_rws.get("rws_stenosis", 0)
+
                 report_lines.append(f"Stenosis RWS: {rws_val:.2f}%")
                 report_lines.append("Analysis Method: Enhanced RWS Analysis with outlier detection")
-                
-                if 'mld_values' in stenosis_rws:
-                    mld_values = stenosis_rws['mld_values']
+
+                if "mld_values" in stenosis_rws:
+                    mld_values = stenosis_rws["mld_values"]
                     if mld_values:
                         max_mld = max(mld_values.values())
                         min_mld = min(mld_values.values())
-                        max_phase = stenosis_rws.get('max_mld_phase', 'unknown')
-                        min_phase = stenosis_rws.get('min_mld_phase', 'unknown')
-                        
+                        max_phase = stenosis_rws.get("max_mld_phase", "unknown")
+                        min_phase = stenosis_rws.get("min_mld_phase", "unknown")
+
                         report_lines.append(f"Maximum MLD: {max_mld:.2f}mm (Phase: {max_phase})")
                         report_lines.append(f"Minimum MLD: {min_mld:.2f}mm (Phase: {min_phase})")
                         report_lines.append(f"MLD Variation: {max_mld - min_mld:.2f}mm")
             else:
                 # Standard RWS format
-                rws_val = rws_results.get('rws_percentage', 0)
+                rws_val = rws_results.get("rws_percentage", 0)
                 report_lines.append(f"RWS: {rws_val:.2f}%")
-                if 'max_diameter' in rws_results:
+                if "max_diameter" in rws_results:
                     report_lines.append(f"Maximum MLD: {rws_results['max_diameter']:.2f}mm")
-                if 'min_diameter' in rws_results:
+                if "min_diameter" in rws_results:
                     report_lines.append(f"Minimum MLD: {rws_results['min_diameter']:.2f}mm")
-                if 'method' in rws_results:
+                if "method" in rws_results:
                     report_lines.append(f"Method: {rws_results['method']}")
-            
+
             # Clinical interpretation
-            rws_val = rws_results.get('stenosis_rws', {}).get('rws_stenosis', 0) or rws_results.get('rws_percentage', 0)
+            rws_val = rws_results.get("stenosis_rws", {}).get("rws_stenosis", 0) or rws_results.get(
+                "rws_percentage", 0
+            )
             if rws_val > 12:
-                report_lines.append("Clinical Interpretation: HIGH RWS (>12%) - Potential plaque vulnerability")
+                report_lines.append(
+                    "Clinical Interpretation: HIGH RWS (>12%) - Potential plaque vulnerability"
+                )
             else:
-                report_lines.append("Clinical Interpretation: NORMAL RWS (<12%) - Stable plaque characteristics")
+                report_lines.append(
+                    "Clinical Interpretation: NORMAL RWS (<12%) - Stable plaque characteristics"
+                )
         else:
             report_lines.append("No RWS analysis performed")
-        
+
         report_lines.append("")
         report_lines.append("RWS Formula: (MLDmax - MLDmin) / MLDmin × 100%")
         report_lines.append("")
-        
+
         # Footer
         report_lines.append("-" * 80)
         report_lines.append("Report generated by Coronary Clear Vision")
         report_lines.append("-" * 80)
-        
+
         return "\n".join(report_lines)
-    
+
     def _show_report_preview(self, report_text):
         """Show report preview dialog"""
         from PyQt6.QtWidgets import QTextEdit, QVBoxLayout
+
         dialog = QDialog(self)
         dialog.setWindowTitle("Analysis Report Preview")
         dialog.resize(800, 600)
@@ -3334,323 +3740,380 @@ class MainWindow(QMainWindow):
     def export_pdf_report(self):
         """Export analysis report as PDF"""
         try:
-            from reportlab.lib.pagesizes import letter, A4
+            from reportlab.lib.pagesizes import A4
             from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
             from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-            from reportlab.lib.units import inch
             from reportlab.lib import colors
             from PyQt6.QtWidgets import QFileDialog
             from datetime import datetime
-            
+
             # Get patient name for filename
             patient_name = ""
-            if hasattr(self, 'dicom_parser') and self.dicom_parser and self.dicom_parser.dicom_data:
+            if hasattr(self, "dicom_parser") and self.dicom_parser and self.dicom_parser.dicom_data:
                 dicom_data = self.dicom_parser.dicom_data
-                if hasattr(dicom_data, 'PatientName'):
-                    patient_name_raw = str(getattr(dicom_data, 'PatientName', ''))
+                if hasattr(dicom_data, "PatientName"):
+                    patient_name_raw = str(getattr(dicom_data, "PatientName", ""))
                     if patient_name_raw:
                         patient_name = self._clean_filename(patient_name_raw)
-            
+
             # Create filename with patient name
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             if patient_name:
                 suggested_filename = f"coronary_analysis_{patient_name}_{timestamp}.pdf"
             else:
                 suggested_filename = f"coronary_analysis_report_{timestamp}.pdf"
-            
+
             # Get save location
             file_path, _ = QFileDialog.getSaveFileName(
-                self,
-                "Save PDF Report",
-                suggested_filename,
-                "PDF Files (*.pdf)"
+                self, "Save PDF Report", suggested_filename, "PDF Files (*.pdf)"
             )
-            
+
             if not file_path:
                 return
-            
+
             # Create PDF document
             doc = SimpleDocTemplate(file_path, pagesize=A4)
             styles = getSampleStyleSheet()
             story = []
-            
+
             # Title
             title_style = ParagraphStyle(
-                'CustomTitle',
-                parent=styles['Heading1'],
+                "CustomTitle",
+                parent=styles["Heading1"],
                 fontSize=18,
                 spaceAfter=30,
-                alignment=1  # Center alignment
+                alignment=1,  # Center alignment
             )
             story.append(Paragraph("CORONARY ANALYSIS COMPREHENSIVE REPORT", title_style))
             story.append(Spacer(1, 12))
-            
+
             # Generation info
-            story.append(Paragraph(f"<b>Generated:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+            story.append(
+                Paragraph(
+                    f"<b>Generated:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                    styles["Normal"],
+                )
+            )
             story.append(Spacer(1, 12))
-            
+
             # Patient Information
-            if patient_name and hasattr(self, 'dicom_parser') and self.dicom_parser and self.dicom_parser.dicom_data:
+            if (
+                patient_name
+                and hasattr(self, "dicom_parser")
+                and self.dicom_parser
+                and self.dicom_parser.dicom_data
+            ):
                 dicom_data = self.dicom_parser.dicom_data
-                story.append(Paragraph("<b>PATIENT INFORMATION</b>", styles['Heading2']))
-                
+                story.append(Paragraph("<b>PATIENT INFORMATION</b>", styles["Heading2"]))
+
                 patient_data = []
-                if hasattr(dicom_data, 'PatientName'):
-                    patient_data.append(['Patient Name:', str(getattr(dicom_data, 'PatientName', 'N/A'))])
-                if hasattr(dicom_data, 'PatientID'):
-                    patient_data.append(['Patient ID:', str(getattr(dicom_data, 'PatientID', 'N/A'))])
-                if hasattr(dicom_data, 'StudyDescription'):
-                    patient_data.append(['Study:', str(getattr(dicom_data, 'StudyDescription', 'N/A'))])
-                
+                if hasattr(dicom_data, "PatientName"):
+                    patient_data.append(
+                        ["Patient Name:", str(getattr(dicom_data, "PatientName", "N/A"))]
+                    )
+                if hasattr(dicom_data, "PatientID"):
+                    patient_data.append(
+                        ["Patient ID:", str(getattr(dicom_data, "PatientID", "N/A"))]
+                    )
+                if hasattr(dicom_data, "StudyDescription"):
+                    patient_data.append(
+                        ["Study:", str(getattr(dicom_data, "StudyDescription", "N/A"))]
+                    )
+
                 if patient_data:
                     patient_table = Table(patient_data)
-                    patient_table.setStyle(TableStyle([
-                        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-                        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-                    ]))
+                    patient_table.setStyle(
+                        TableStyle(
+                            [
+                                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                            ]
+                        )
+                    )
                     story.append(patient_table)
                     story.append(Spacer(1, 12))
-            
+
             # Calibration Information
-            story.append(Paragraph("<b>CALIBRATION INFORMATION</b>", styles['Heading2']))
+            story.append(Paragraph("<b>CALIBRATION INFORMATION</b>", styles["Heading2"]))
             cal_data = []
-            
-            if hasattr(self, 'calibration_factor') and self.calibration_factor:
-                cal_data.append(['Calibration Factor:', f"{self.calibration_factor:.5f} mm/pixel"])
-                if hasattr(self, 'calibration_details'):
-                    cal_data.append(['Method:', self.calibration_details.get('method', 'Manual catheter calibration')])
-                    cal_data.append(['Catheter Size:', self.calibration_details.get('catheter_size', 'Unknown')])
+
+            if hasattr(self, "calibration_factor") and self.calibration_factor:
+                cal_data.append(["Calibration Factor:", f"{self.calibration_factor:.5f} mm/pixel"])
+                if hasattr(self, "calibration_details"):
+                    cal_data.append(
+                        [
+                            "Method:",
+                            self.calibration_details.get("method", "Manual catheter calibration"),
+                        ]
+                    )
+                    cal_data.append(
+                        ["Catheter Size:", self.calibration_details.get("catheter_size", "Unknown")]
+                    )
             else:
-                cal_data.append(['Calibration:', 'Not performed'])
-            
-            if hasattr(self, 'dicom_parser') and self.dicom_parser and self.dicom_parser.pixel_spacing:
-                cal_data.append(['DICOM Pixel Spacing:', f"{self.dicom_parser.pixel_spacing:.5f} mm/pixel"])
-            
+                cal_data.append(["Calibration:", "Not performed"])
+
+            if (
+                hasattr(self, "dicom_parser")
+                and self.dicom_parser
+                and self.dicom_parser.pixel_spacing
+            ):
+                cal_data.append(
+                    ["DICOM Pixel Spacing:", f"{self.dicom_parser.pixel_spacing:.5f} mm/pixel"]
+                )
+
             cal_table = Table(cal_data)
-            cal_table.setStyle(TableStyle([
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-            ]))
+            cal_table.setStyle(
+                TableStyle(
+                    [
+                        ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ]
+                )
+            )
             story.append(cal_table)
             story.append(Spacer(1, 12))
-            
+
             # QCA Results
-            story.append(Paragraph("<b>QCA ANALYSIS RESULTS</b>", styles['Heading2']))
-            
+            story.append(Paragraph("<b>QCA ANALYSIS RESULTS</b>", styles["Heading2"]))
+
             qca_results = None
-            if hasattr(self, 'sequential_qca_results'):
+            if hasattr(self, "sequential_qca_results"):
                 qca_results = self.sequential_qca_results
-            
+
             if qca_results and isinstance(qca_results, dict):
                 valid_results = []
                 for frame_idx, result in qca_results.items():
-                    if isinstance(frame_idx, int) and isinstance(result, dict) and result.get('success'):
+                    if (
+                        isinstance(frame_idx, int)
+                        and isinstance(result, dict)
+                        and result.get("success")
+                    ):
                         valid_results.append((frame_idx, result))
-                
+
                 if valid_results:
-                    story.append(Paragraph(f"<b>Total Frames Analyzed:</b> {len(valid_results)}", styles['Normal']))
+                    story.append(
+                        Paragraph(
+                            f"<b>Total Frames Analyzed:</b> {len(valid_results)}", styles["Normal"]
+                        )
+                    )
                     story.append(Spacer(1, 6))
-                    
+
                     # QCA Table
-                    qca_table_data = [['Frame', 'Stenosis (%)', 'MLD (mm)', 'Ref. Diameter (mm)', 'Lesion Length (mm)']]
+                    qca_table_data = [
+                        [
+                            "Frame",
+                            "Stenosis (%)",
+                            "MLD (mm)",
+                            "Ref. Diameter (mm)",
+                            "Lesion Length (mm)",
+                        ]
+                    ]
                     for frame_idx, result in sorted(valid_results):
-                        stenosis = result.get('percent_stenosis', 0)
-                        mld = result.get('mld', 0) or result.get('minimum_diameter', 0)
-                        ref_dia = result.get('reference_diameter', 0)
-                        lesion_len = result.get('lesion_length', 0)
-                        qca_table_data.append([
-                            str(frame_idx),
-                            f"{stenosis:.1f}",
-                            f"{mld:.2f}",
-                            f"{ref_dia:.2f}",
-                            f"{lesion_len:.2f}"
-                        ])
-                    
+                        stenosis = result.get("percent_stenosis", 0)
+                        mld = result.get("mld", 0) or result.get("minimum_diameter", 0)
+                        ref_dia = result.get("reference_diameter", 0)
+                        lesion_len = result.get("lesion_length", 0)
+                        qca_table_data.append(
+                            [
+                                str(frame_idx),
+                                f"{stenosis:.1f}",
+                                f"{mld:.2f}",
+                                f"{ref_dia:.2f}",
+                                f"{lesion_len:.2f}",
+                            ]
+                        )
+
                     qca_table = Table(qca_table_data)
-                    qca_table.setStyle(TableStyle([
-                        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                        ('FONTSIZE', (0, 0), (-1, 0), 10),
-                        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                        ('GRID', (0, 0), (-1, -1), 1, colors.black)
-                    ]))
+                    qca_table.setStyle(
+                        TableStyle(
+                            [
+                                ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                                ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                                ("FONTSIZE", (0, 0), (-1, 0), 10),
+                                ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                                ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                                ("GRID", (0, 0), (-1, -1), 1, colors.black),
+                            ]
+                        )
+                    )
                     story.append(qca_table)
                 else:
-                    story.append(Paragraph("No valid QCA results available", styles['Normal']))
+                    story.append(Paragraph("No valid QCA results available", styles["Normal"]))
             else:
-                story.append(Paragraph("No QCA analysis performed", styles['Normal']))
-            
+                story.append(Paragraph("No QCA analysis performed", styles["Normal"]))
+
             story.append(Spacer(1, 12))
-            
+
             # RWS Results
-            story.append(Paragraph("<b>RWS ANALYSIS RESULTS</b>", styles['Heading2']))
-            
+            story.append(Paragraph("<b>RWS ANALYSIS RESULTS</b>", styles["Heading2"]))
+
             # Get RWS results
             rws_results = None
-            if hasattr(self, 'rws_enhanced_results') and self.rws_enhanced_results:
+            if hasattr(self, "rws_enhanced_results") and self.rws_enhanced_results:
                 rws_results = self.rws_enhanced_results
-            elif hasattr(self, 'rws_enhanced_widget') and hasattr(self.rws_enhanced_widget, 'analysis_results'):
+            elif hasattr(self, "rws_enhanced_widget") and hasattr(
+                self.rws_enhanced_widget, "analysis_results"
+            ):
                 rws_results = self.rws_enhanced_widget.analysis_results
-            elif hasattr(self, 'rws_widget') and hasattr(self.rws_widget, 'results'):
+            elif hasattr(self, "rws_widget") and hasattr(self.rws_widget, "results"):
                 rws_results = self.rws_widget.results
-            
+
             if rws_results and isinstance(rws_results, dict):
                 rws_data = []
-                
-                if 'stenosis_rws' in rws_results:
+
+                if "stenosis_rws" in rws_results:
                     # Enhanced RWS format
-                    stenosis_rws = rws_results['stenosis_rws']
-                    rws_val = stenosis_rws.get('rws_stenosis', 0)
-                    
-                    rws_data.append(['Stenosis RWS:', f"{rws_val:.2f}%"])
-                    rws_data.append(['Analysis Method:', 'Enhanced RWS Analysis with outlier detection'])
-                    
-                    if 'mld_values' in stenosis_rws and stenosis_rws['mld_values']:
-                        mld_values = stenosis_rws['mld_values']
+                    stenosis_rws = rws_results["stenosis_rws"]
+                    rws_val = stenosis_rws.get("rws_stenosis", 0)
+
+                    rws_data.append(["Stenosis RWS:", f"{rws_val:.2f}%"])
+                    rws_data.append(
+                        ["Analysis Method:", "Enhanced RWS Analysis with outlier detection"]
+                    )
+
+                    if "mld_values" in stenosis_rws and stenosis_rws["mld_values"]:
+                        mld_values = stenosis_rws["mld_values"]
                         max_mld = max(mld_values.values())
                         min_mld = min(mld_values.values())
-                        max_phase = stenosis_rws.get('max_mld_phase', 'unknown')
-                        min_phase = stenosis_rws.get('min_mld_phase', 'unknown')
-                        
-                        rws_data.append(['Maximum MLD:', f"{max_mld:.2f}mm (Phase: {max_phase})"])
-                        rws_data.append(['Minimum MLD:', f"{min_mld:.2f}mm (Phase: {min_phase})"])
-                        rws_data.append(['MLD Variation:', f"{max_mld - min_mld:.2f}mm"])
+                        max_phase = stenosis_rws.get("max_mld_phase", "unknown")
+                        min_phase = stenosis_rws.get("min_mld_phase", "unknown")
+
+                        rws_data.append(["Maximum MLD:", f"{max_mld:.2f}mm (Phase: {max_phase})"])
+                        rws_data.append(["Minimum MLD:", f"{min_mld:.2f}mm (Phase: {min_phase})"])
+                        rws_data.append(["MLD Variation:", f"{max_mld - min_mld:.2f}mm"])
                 else:
                     # Standard RWS format
-                    rws_val = rws_results.get('rws_percentage', 0)
-                    rws_data.append(['RWS:', f"{rws_val:.2f}%"])
-                    if 'method' in rws_results:
-                        rws_data.append(['Method:', rws_results['method']])
-                
+                    rws_val = rws_results.get("rws_percentage", 0)
+                    rws_data.append(["RWS:", f"{rws_val:.2f}%"])
+                    if "method" in rws_results:
+                        rws_data.append(["Method:", rws_results["method"]])
+
                 # Clinical interpretation
-                rws_val = rws_results.get('stenosis_rws', {}).get('rws_stenosis', 0) or rws_results.get('rws_percentage', 0)
+                rws_val = rws_results.get("stenosis_rws", {}).get(
+                    "rws_stenosis", 0
+                ) or rws_results.get("rws_percentage", 0)
                 if rws_val > 12:
                     interpretation = "HIGH RWS (>12%) - Potential plaque vulnerability"
                     interp_color = colors.red
                 else:
                     interpretation = "NORMAL RWS (<12%) - Stable plaque characteristics"
                     interp_color = colors.green
-                
-                rws_data.append(['Clinical Interpretation:', interpretation])
-                
+
+                rws_data.append(["Clinical Interpretation:", interpretation])
+
                 rws_table = Table(rws_data)
-                rws_table.setStyle(TableStyle([
-                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                    ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-                    ('TEXTCOLOR', (1, -1), (1, -1), interp_color),  # Color the interpretation
-                ]))
+                rws_table.setStyle(
+                    TableStyle(
+                        [
+                            ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                            (
+                                "TEXTCOLOR",
+                                (1, -1),
+                                (1, -1),
+                                interp_color,
+                            ),  # Color the interpretation
+                        ]
+                    )
+                )
                 story.append(rws_table)
             else:
-                story.append(Paragraph("No RWS analysis performed", styles['Normal']))
-            
+                story.append(Paragraph("No RWS analysis performed", styles["Normal"]))
+
             story.append(Spacer(1, 12))
-            story.append(Paragraph("<b>RWS Formula:</b> (MLDmax - MLDmin) / MLDmin × 100%", styles['Normal']))
+            story.append(
+                Paragraph("<b>RWS Formula:</b> (MLDmax - MLDmin) / MLDmin × 100%", styles["Normal"])
+            )
             story.append(Spacer(1, 20))
-            
+
             # Footer
-            story.append(Paragraph("Report generated by Coronary Clear Vision", styles['Normal']))
-            
+            story.append(Paragraph("Report generated by Coronary Clear Vision", styles["Normal"]))
+
             # Build PDF
             doc.build(story)
-            
+
             QMessageBox.information(
-                self,
-                "Export Successful",
-                f"PDF report exported successfully:\n{file_path}"
+                self, "Export Successful", f"PDF report exported successfully:\n{file_path}"
             )
-            
+
         except Exception as e:
             logger.error(f"Failed to export PDF report: {e}")
-            QMessageBox.critical(
-                self,
-                "Export Error",
-                f"Failed to export PDF report:\n{str(e)}"
-            )
+            QMessageBox.critical(self, "Export Error", f"Failed to export PDF report:\n{str(e)}")
 
     def export_txt_report(self):
         """Export analysis report as text file"""
         try:
             from PyQt6.QtWidgets import QFileDialog
             from datetime import datetime
-            
+
             # Get patient name for filename
             patient_name = ""
-            if hasattr(self, 'dicom_parser') and self.dicom_parser and self.dicom_parser.dicom_data:
+            if hasattr(self, "dicom_parser") and self.dicom_parser and self.dicom_parser.dicom_data:
                 dicom_data = self.dicom_parser.dicom_data
-                if hasattr(dicom_data, 'PatientName'):
-                    patient_name_raw = str(getattr(dicom_data, 'PatientName', ''))
+                if hasattr(dicom_data, "PatientName"):
+                    patient_name_raw = str(getattr(dicom_data, "PatientName", ""))
                     if patient_name_raw:
                         patient_name = self._clean_filename(patient_name_raw)
-            
+
             # Create filename with patient name
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             if patient_name:
                 suggested_filename = f"coronary_analysis_{patient_name}_{timestamp}.txt"
             else:
                 suggested_filename = f"coronary_analysis_report_{timestamp}.txt"
-            
+
             # Get save location
             file_path, _ = QFileDialog.getSaveFileName(
-                self,
-                "Save Text Report",
-                suggested_filename,
-                "Text Files (*.txt)"
+                self, "Save Text Report", suggested_filename, "Text Files (*.txt)"
             )
-            
+
             if not file_path:
                 return
-            
+
             # Generate report text
             report_text = self._generate_analysis_report()
-            
+
             # Save to file
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 f.write(report_text)
-            
+
             QMessageBox.information(
-                self,
-                "Export Successful",
-                f"Text report exported successfully:\n{file_path}"
+                self, "Export Successful", f"Text report exported successfully:\n{file_path}"
             )
-            
+
         except Exception as e:
             logger.error(f"Failed to export text report: {e}")
-            QMessageBox.critical(
-                self,
-                "Export Error",
-                f"Failed to export text report:\n{str(e)}"
-            )
+            QMessageBox.critical(self, "Export Error", f"Failed to export text report:\n{str(e)}")
 
     def toggle_segmentation_overlay(self):
         """Toggle segmentation overlay visibility"""
-        if hasattr(self.viewer_widget, 'toggle_segmentation_overlay'):
+        if hasattr(self.viewer_widget, "toggle_segmentation_overlay"):
             # Toggle the current state
-            current_state = getattr(self.viewer_widget, 'segmentation_overlay_enabled', False)
+            current_state = getattr(self.viewer_widget, "segmentation_overlay_enabled", False)
             self.viewer_widget.toggle_segmentation_overlay(not current_state)
 
     def toggle_qca_overlay(self):
         """Toggle QCA overlay visibility"""
-        if hasattr(self.viewer_widget, 'toggle_qca_overlay'):
+        if hasattr(self.viewer_widget, "toggle_qca_overlay"):
             # Toggle the current state
-            current_state = getattr(self.viewer_widget, 'qca_overlay_enabled', False)
+            current_state = getattr(self.viewer_widget, "qca_overlay_enabled", False)
             self.viewer_widget.toggle_qca_overlay(not current_state)
 
     def update_qca_overlay(self, results):
         """Update QCA overlay with analysis results"""
         # Get overlay settings from QCA widget first
         settings = {}
-        if hasattr(self, 'qca_widget'):
+        if hasattr(self, "qca_widget"):
             settings = self.qca_widget.get_overlay_settings()
 
         # Set QCA results with proper settings
-        if hasattr(self.viewer_widget, 'set_qca_overlay'):
-            settings['enabled'] = True
+        if hasattr(self.viewer_widget, "set_qca_overlay"):
+            settings["enabled"] = True
             self.viewer_widget.set_qca_overlay(results, settings)
         # Update report with QCA results
         self.update_analysis_report()
@@ -3669,107 +4132,115 @@ class MainWindow(QMainWindow):
 
     def update_segmentation_overlay(self, result: dict):
         """Update segmentation overlay with results"""
-        if hasattr(self.viewer_widget, 'set_segmentation_overlay'):
+        if hasattr(self.viewer_widget, "set_segmentation_overlay"):
             settings = self.segmentation_widget.get_overlay_settings()
             self.viewer_widget.set_segmentation_overlay(result, settings)
 
     def on_viewer_segmentation_point_clicked(self, x: int, y: int):
         """Handle segmentation point click from viewer"""
         # Only forward to segmentation widget if it's in segmentation mode
-        if hasattr(self, 'segmentation_widget') and self.segmentation_widget.segmentation_mode:
+        if hasattr(self, "segmentation_widget") and self.segmentation_widget.segmentation_mode:
             self.segmentation_widget.add_point(x, y)
 
     def update_qca_overlay_settings(self, settings):
         """Update QCA overlay settings"""
-        if hasattr(self.viewer_widget, 'update_qca_overlay_settings'):
+        if hasattr(self.viewer_widget, "update_qca_overlay_settings"):
             self.viewer_widget.update_qca_overlay_settings(settings)
 
     def update_segmentation_overlay_settings(self, settings):
         """Update segmentation overlay settings"""
-        if hasattr(self.viewer_widget, 'update_segmentation_overlay_settings'):
+        if hasattr(self.viewer_widget, "update_segmentation_overlay_settings"):
             self.viewer_widget.update_segmentation_overlay_settings(settings)
 
     def on_calibration_overlay_changed(self, overlay_settings: dict):
         """Handle calibration overlay visibility changes"""
-        if not hasattr(self, 'viewer_widget') or not self.viewer_widget:
+        if not hasattr(self, "viewer_widget") or not self.viewer_widget:
             logger.warning("No viewer widget available for calibration overlay")
             return
-            
+
         logger.info(f"🎨 Calibration overlay settings changed: {overlay_settings}")
         logger.info(f"Method: {overlay_settings.get('method', 'unknown')}")
         logger.info(f"Result data keys: {list(overlay_settings.get('result_data', {}).keys())}")
-        
+
         # Clear all calibration overlays if requested
-        if overlay_settings.get('clear_all', False):
-            if hasattr(self.viewer_widget, 'clear_calibration_overlays'):
+        if overlay_settings.get("clear_all", False):
+            if hasattr(self.viewer_widget, "clear_calibration_overlays"):
                 self.viewer_widget.clear_calibration_overlays()
             return
-        
+
         # Update calibration overlays based on settings
-        method = overlay_settings.get('method', 'angiopy')
-        result_data = overlay_settings.get('result_data', {})
-        
-        if method == 'angiopy':
+        method = overlay_settings.get("method", "angiopy")
+        result_data = overlay_settings.get("result_data", {})
+
+        if method == "angiopy":
             # Clear automatic overlays for AngioPy method
-            if hasattr(self.viewer_widget, 'clear_calibration_centerline_overlay'):
+            if hasattr(self.viewer_widget, "clear_calibration_centerline_overlay"):
                 self.viewer_widget.clear_calibration_centerline_overlay()
-            if hasattr(self.viewer_widget, 'clear_calibration_diameter_overlay'):
+            if hasattr(self.viewer_widget, "clear_calibration_diameter_overlay"):
                 self.viewer_widget.clear_calibration_diameter_overlay()
-            
+
             # Handle AngioPy mask overlay
-            show_mask = overlay_settings.get('show_angiopy_mask', False)
-            if show_mask and 'mask' in result_data:
-                if hasattr(self.viewer_widget, 'set_calibration_mask_overlay'):
-                    self.viewer_widget.set_calibration_mask_overlay(result_data['mask'])
+            show_mask = overlay_settings.get("show_angiopy_mask", False)
+            if show_mask and "mask" in result_data:
+                if hasattr(self.viewer_widget, "set_calibration_mask_overlay"):
+                    self.viewer_widget.set_calibration_mask_overlay(result_data["mask"])
             else:
-                if hasattr(self.viewer_widget, 'clear_calibration_mask_overlay'):
+                if hasattr(self.viewer_widget, "clear_calibration_mask_overlay"):
                     self.viewer_widget.clear_calibration_mask_overlay()
-        
-        elif method == 'automatic':
+
+        elif method == "automatic":
             # Clear AngioPy mask overlay for automatic method
-            if hasattr(self.viewer_widget, 'clear_calibration_mask_overlay'):
+            if hasattr(self.viewer_widget, "clear_calibration_mask_overlay"):
                 self.viewer_widget.clear_calibration_mask_overlay()
-            
+
             # Handle automatic method overlays
-            show_centerline = overlay_settings.get('show_auto_centerline', False)
-            show_diameters = overlay_settings.get('show_auto_diameters', False)
-            
-            if show_centerline and 'centerline' in result_data:
-                if hasattr(self.viewer_widget, 'set_calibration_centerline_overlay'):
-                    self.viewer_widget.set_calibration_centerline_overlay(result_data['centerline'])
+            show_centerline = overlay_settings.get("show_auto_centerline", False)
+            show_diameters = overlay_settings.get("show_auto_diameters", False)
+
+            if show_centerline and "centerline" in result_data:
+                if hasattr(self.viewer_widget, "set_calibration_centerline_overlay"):
+                    self.viewer_widget.set_calibration_centerline_overlay(result_data["centerline"])
             else:
-                if hasattr(self.viewer_widget, 'clear_calibration_centerline_overlay'):
+                if hasattr(self.viewer_widget, "clear_calibration_centerline_overlay"):
                     self.viewer_widget.clear_calibration_centerline_overlay()
-                
+
             if show_diameters:
                 logger.info(f"🔍 Diameter overlay requested - checking data availability:")
                 logger.info(f"  - show_diameters: {show_diameters}")
                 logger.info(f"  - 'centerline' in result_data: {'centerline' in result_data}")
-                logger.info(f"  - 'diameter_measurements' in result_data: {'diameter_measurements' in result_data}")
-                
-                if 'centerline' in result_data and 'diameter_measurements' in result_data:
+                logger.info(
+                    f"  - 'diameter_measurements' in result_data: {'diameter_measurements' in result_data}"
+                )
+
+                if "centerline" in result_data and "diameter_measurements" in result_data:
                     # Use actual diameter measurements along centerline
-                    centerline = result_data['centerline']
-                    diameters = result_data['diameter_measurements']
-                    
+                    centerline = result_data["centerline"]
+                    diameters = result_data["diameter_measurements"]
+
                     logger.info(f"  - Centerline length: {len(centerline)}")
                     logger.info(f"  - Diameters length: {len(diameters)}")
-                    
+
                     if len(centerline) == len(diameters):
-                        if hasattr(self.viewer_widget, 'set_calibration_diameter_overlay'):
+                        if hasattr(self.viewer_widget, "set_calibration_diameter_overlay"):
                             logger.info("✅ Setting calibration diameter overlay")
-                            self.viewer_widget.set_calibration_diameter_overlay(centerline, diameters)
+                            self.viewer_widget.set_calibration_diameter_overlay(
+                                centerline, diameters
+                            )
                         else:
-                            logger.error("❌ Viewer widget has no set_calibration_diameter_overlay method")
+                            logger.error(
+                                "❌ Viewer widget has no set_calibration_diameter_overlay method"
+                            )
                     else:
-                        logger.warning(f"❌ Centerline length ({len(centerline)}) != diameters length ({len(diameters)})")
+                        logger.warning(
+                            f"❌ Centerline length ({len(centerline)}) != diameters length ({len(diameters)})"
+                        )
                 else:
                     logger.warning("❌ Missing centerline or diameter_measurements in result_data")
-                    if hasattr(self.viewer_widget, 'clear_calibration_diameter_overlay'):
+                    if hasattr(self.viewer_widget, "clear_calibration_diameter_overlay"):
                         self.viewer_widget.clear_calibration_diameter_overlay()
             else:
                 logger.info("🔍 Diameter overlay not requested - clearing")
-                if hasattr(self.viewer_widget, 'clear_calibration_diameter_overlay'):
+                if hasattr(self.viewer_widget, "clear_calibration_diameter_overlay"):
                     self.viewer_widget.clear_calibration_diameter_overlay()
 
     def show_shortcuts(self):
@@ -3882,6 +4353,7 @@ class MainWindow(QMainWindow):
 
         # Center window on screen
         from PyQt6.QtWidgets import QApplication
+
         screen = QApplication.primaryScreen().geometry()
         x = (screen.width() - self.width()) // 2
         y = (screen.height() - self.height()) // 2
@@ -3892,10 +4364,10 @@ class MainWindow(QMainWindow):
 
     def check_ekg_sync_status(self):
         """Check and update ECG-DICOM synchronization status"""
-        if not hasattr(self, 'dicom_parser') or not self.dicom_parser.has_data():
+        if not hasattr(self, "dicom_parser") or not self.dicom_parser.has_data():
             return
 
-        if not hasattr(self, 'ekg_parser') or self.ekg_parser.ekg_data is None:
+        if not hasattr(self, "ekg_parser") or self.ekg_parser.ekg_data is None:
             return
 
         # Calculate video duration
@@ -3927,7 +4399,7 @@ class MainWindow(QMainWindow):
         self.viewer_widget.trigger_heartbeat()
 
         # If playing, sync with current frame
-        if hasattr(self, 'frame_timestamps') and hasattr(self, 'ekg_parser'):
+        if hasattr(self, "frame_timestamps") and hasattr(self, "ekg_parser"):
             # Convert peak index to time
             peak_time = peak_index / self.ekg_parser.sampling_rate
 
@@ -3939,18 +4411,20 @@ class MainWindow(QMainWindow):
                 # Log synchronization for debugging
                 time_diff = abs(peak_time - frame_time)
                 if time_diff < 0.1:  # Within 100ms
-                    logger.debug(f"R-peak at {peak_time:.3f}s matches frame {current_frame} at {frame_time:.3f}s")
+                    logger.debug(
+                        f"R-peak at {peak_time:.3f}s matches frame {current_frame} at {frame_time:.3f}s"
+                    )
 
     def check_r_peak_at_frame(self, frame_index: int):
         """Check if current frame corresponds to an R-peak and update beat counter"""
-        if not hasattr(self, 'ekg_parser') or self.ekg_parser.ekg_data is None:
+        if not hasattr(self, "ekg_parser") or self.ekg_parser.ekg_data is None:
             return
 
-        if not hasattr(self, 'frame_timestamps') or frame_index >= len(self.frame_timestamps):
+        if not hasattr(self, "frame_timestamps") or frame_index >= len(self.frame_timestamps):
             return
 
         # Get R-peaks if not already stored
-        if not hasattr(self, '_cached_r_peaks'):
+        if not hasattr(self, "_cached_r_peaks"):
             self._cached_r_peaks = self.ekg_parser.detect_r_peaks()
 
         if self._cached_r_peaks is None or len(self._cached_r_peaks) == 0:
@@ -3979,7 +4453,7 @@ class MainWindow(QMainWindow):
 
     def _calculate_current_beat(self, frame_time: float) -> int:
         """Calculate which beat number the current frame time belongs to"""
-        if not hasattr(self, '_cached_r_peaks') or self._cached_r_peaks is None:
+        if not hasattr(self, "_cached_r_peaks") or self._cached_r_peaks is None:
             return 0
 
         # Convert R-peak indices to times
@@ -4000,29 +4474,35 @@ class MainWindow(QMainWindow):
             return len(peak_times)
 
         return 0
-    
+
     def _get_current_beat_frame_range(self, current_frame: int) -> tuple:
         """Get the frame range for the current cardiac beat"""
         try:
             # If no ECG data, return reasonable default (1 second worth of frames)
-            if not hasattr(self, 'ekg_parser') or not self.ekg_parser or not hasattr(self, '_cached_r_peaks'):
+            if (
+                not hasattr(self, "ekg_parser")
+                or not self.ekg_parser
+                or not hasattr(self, "_cached_r_peaks")
+            ):
                 frame_rate = self.dicom_parser.get_frame_rate() or 30.0
                 frames_per_beat = int(frame_rate)  # Assume ~1 second per beat
                 end_frame = min(current_frame + frames_per_beat, self.dicom_parser.num_frames - 1)
-                logger.info(f"No ECG data - using default beat range: frames {current_frame} to {end_frame}")
+                logger.info(
+                    f"No ECG data - using default beat range: frames {current_frame} to {end_frame}"
+                )
                 return (current_frame, end_frame)
-            
+
             # Get frame time
             frame_rate = self.dicom_parser.get_frame_rate() or 30.0
             frame_time = current_frame / frame_rate
-            
+
             # Get R-peak times
             peak_times = self._cached_r_peaks / self.ekg_parser.sampling_rate
-            
+
             # Find current beat boundaries
             beat_start_time = 0.0
-            beat_end_time = float('inf')
-            
+            beat_end_time = float("inf")
+
             # Find which beat interval we're in
             if frame_time < peak_times[0]:
                 # Before first R-peak
@@ -4045,20 +4525,22 @@ class MainWindow(QMainWindow):
                             beat_end_time = beat_start_time + avg_beat_duration
                         else:
                             beat_end_time = beat_start_time + 1.0  # Default 1 second
-            
+
             # Convert times to frames
             start_frame = max(0, int(beat_start_time * frame_rate))
             end_frame = min(int(beat_end_time * frame_rate), self.dicom_parser.num_frames - 1)
-            
+
             # Ensure we have at least current frame to end of beat
             if start_frame > current_frame:
                 start_frame = current_frame
-            
-            logger.info(f"Current beat range: frames {start_frame} to {end_frame} "
-                       f"(times: {beat_start_time:.2f}s to {beat_end_time:.2f}s)")
-            
+
+            logger.info(
+                f"Current beat range: frames {start_frame} to {end_frame} "
+                f"(times: {beat_start_time:.2f}s to {beat_end_time:.2f}s)"
+            )
+
             return (start_frame, end_frame)
-            
+
         except Exception as e:
             logger.error(f"Error calculating beat range: {e}")
             # Fallback to reasonable default
@@ -4076,7 +4558,8 @@ class MainWindow(QMainWindow):
         """Stop blinking the Start Analysis button"""
         self.track_button_timer.stop()
         # Reset button style to normal
-        self.track_all_button.setStyleSheet("""
+        self.track_all_button.setStyleSheet(
+            """
             QPushButton { 
                 font-size: 14px;
                 font-weight: bold;
@@ -4088,7 +4571,8 @@ class MainWindow(QMainWindow):
             QPushButton:hover {
                 background-color: #388E3C;
             }
-        """)
+        """
+        )
         self.track_button_blink_state = False
 
     def toggle_track_button_style(self):
@@ -4097,7 +4581,8 @@ class MainWindow(QMainWindow):
 
         if self.track_button_blink_state:
             # Bright green highlight style - eye-catching
-            self.track_all_button.setStyleSheet("""
+            self.track_all_button.setStyleSheet(
+                """
                 QPushButton { 
                     font-size: 14px;
                     font-weight: bold;
@@ -4110,10 +4595,12 @@ class MainWindow(QMainWindow):
                 QPushButton:hover {
                     background-color: #66BB6A;
                 }
-            """)
+            """
+            )
         else:
             # Darker green normal state
-            self.track_all_button.setStyleSheet("""
+            self.track_all_button.setStyleSheet(
+                """
                 QPushButton { 
                     font-size: 14px;
                     font-weight: bold;
@@ -4125,176 +4612,180 @@ class MainWindow(QMainWindow):
                 QPushButton:hover {
                     background-color: #388E3C;
                 }
-            """)
+            """
+            )
 
     def export_comprehensive_xlsx_report(self):
         """Export comprehensive analysis report as XLSX with multiple sheets"""
         from openpyxl import Workbook
-        from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-        from openpyxl.utils.dataframe import dataframe_to_rows
         from datetime import datetime
-        
+
         try:
             # Get file path from user
             from PyQt6.QtWidgets import QFileDialog
-            
+
             # Get patient name from DICOM metadata if available
             patient_name = ""
-            if hasattr(self, 'dicom_parser') and self.dicom_parser and self.dicom_parser.dicom_data:
+            if hasattr(self, "dicom_parser") and self.dicom_parser and self.dicom_parser.dicom_data:
                 dicom_data = self.dicom_parser.dicom_data
-                if hasattr(dicom_data, 'PatientName'):
-                    patient_name_raw = str(getattr(dicom_data, 'PatientName', ''))
+                if hasattr(dicom_data, "PatientName"):
+                    patient_name_raw = str(getattr(dicom_data, "PatientName", ""))
                     if patient_name_raw:
                         # Clean patient name for filename (remove invalid characters)
                         patient_name = self._clean_filename(patient_name_raw)
-            
+
             # Create filename with patient name if available
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             if patient_name:
                 suggested_filename = f"coronary_analysis_{patient_name}_{timestamp}.xlsx"
             else:
                 suggested_filename = f"coronary_analysis_report_{timestamp}.xlsx"
-            
+
             file_path, _ = QFileDialog.getSaveFileName(
                 self,
                 "Save Comprehensive Analysis Report",
                 suggested_filename,
-                "Excel Files (*.xlsx)"
+                "Excel Files (*.xlsx)",
             )
-            
+
             if not file_path:
                 return
-            
+
             # Create workbook
             wb = Workbook()
-            
+
             # Remove default sheet
-            if 'Sheet' in wb.sheetnames:
-                wb.remove(wb['Sheet'])
-            
+            if "Sheet" in wb.sheetnames:
+                wb.remove(wb["Sheet"])
+
             # Create and populate sheets
             self._create_calibration_sheet(wb)
-            self._create_qca_sheet(wb) 
+            self._create_qca_sheet(wb)
             self._create_rws_sheet(wb)
             self._create_dicom_metadata_sheet(wb)
-            
+
             # Save workbook
             wb.save(file_path)
-            
+
             QMessageBox.information(
-                self, 
-                "Export Successful", 
-                f"Comprehensive analysis report exported successfully:\n{file_path}"
+                self,
+                "Export Successful",
+                f"Comprehensive analysis report exported successfully:\n{file_path}",
             )
-            
+
         except Exception as e:
             logger.error(f"Failed to export XLSX report: {e}")
-            QMessageBox.critical(
-                self,
-                "Export Error",
-                f"Failed to export XLSX report:\n{str(e)}"
-            )
-    
+            QMessageBox.critical(self, "Export Error", f"Failed to export XLSX report:\n{str(e)}")
+
     def _create_calibration_sheet(self, wb):
         """Create calibration data sheet"""
-        from openpyxl.styles import Font, Alignment, PatternFill
-        
+        from openpyxl.styles import Font
+
         ws = wb.create_sheet("Calibration")
-        
+
         # Header
         header_font = Font(bold=True, size=14)
-        ws['A1'] = "Calibration Information"
-        ws['A1'].font = header_font
-        
+        ws["A1"] = "Calibration Information"
+        ws["A1"].font = header_font
+
         row = 3
-        
+
         # Calibration factor
-        ws[f'A{row}'] = "Calibration Factor (mm/pixel):"
-        if hasattr(self, 'calibration_factor') and self.calibration_factor:
-            ws[f'B{row}'] = f"{self.calibration_factor:.5f}"
+        ws[f"A{row}"] = "Calibration Factor (mm/pixel):"
+        if hasattr(self, "calibration_factor") and self.calibration_factor:
+            ws[f"B{row}"] = f"{self.calibration_factor:.5f}"
         else:
-            ws[f'B{row}'] = "Not calibrated"
+            ws[f"B{row}"] = "Not calibrated"
         row += 1
-        
+
         # Calibration method
-        ws[f'A{row}'] = "Calibration Method:"
-        if hasattr(self, 'calibration_details'):
-            ws[f'B{row}'] = self.calibration_details.get('method', 'Unknown')
+        ws[f"A{row}"] = "Calibration Method:"
+        if hasattr(self, "calibration_details"):
+            ws[f"B{row}"] = self.calibration_details.get("method", "Unknown")
         else:
-            ws[f'B{row}'] = "Manual catheter calibration"
+            ws[f"B{row}"] = "Manual catheter calibration"
         row += 1
-        
+
         # Catheter size
-        ws[f'A{row}'] = "Catheter Size:"
-        if hasattr(self, 'calibration_details'):
-            ws[f'B{row}'] = self.calibration_details.get('catheter_size', 'Unknown')
+        ws[f"A{row}"] = "Catheter Size:"
+        if hasattr(self, "calibration_details"):
+            ws[f"B{row}"] = self.calibration_details.get("catheter_size", "Unknown")
         else:
-            ws[f'B{row}'] = "Unknown"
+            ws[f"B{row}"] = "Unknown"
         row += 1
-        
+
         # DICOM fallback calibration
-        if hasattr(self, 'fallback_calibration') and self.fallback_calibration:
-            ws[f'A{row}'] = "DICOM Calibration (mm/pixel):"
-            ws[f'B{row}'] = f"{self.fallback_calibration:.5f}"
+        if hasattr(self, "fallback_calibration") and self.fallback_calibration:
+            ws[f"A{row}"] = "DICOM Calibration (mm/pixel):"
+            ws[f"B{row}"] = f"{self.fallback_calibration:.5f}"
             row += 1
-        
+
         # Pixel spacing from DICOM
-        if hasattr(self, 'dicom_parser') and self.dicom_parser and self.dicom_parser.pixel_spacing:
-            ws[f'A{row}'] = "DICOM Pixel Spacing (mm/pixel):"
-            ws[f'B{row}'] = f"{self.dicom_parser.pixel_spacing:.5f}"
+        if hasattr(self, "dicom_parser") and self.dicom_parser and self.dicom_parser.pixel_spacing:
+            ws[f"A{row}"] = "DICOM Pixel Spacing (mm/pixel):"
+            ws[f"B{row}"] = f"{self.dicom_parser.pixel_spacing:.5f}"
             row += 1
-        
+
         # Auto-fit columns
-        ws.column_dimensions['A'].width = 30
-        ws.column_dimensions['B'].width = 20
-    
+        ws.column_dimensions["A"].width = 30
+        ws.column_dimensions["B"].width = 20
+
     def _create_qca_sheet(self, wb):
         """Create QCA analysis data sheet"""
-        from openpyxl.styles import Font, Alignment, PatternFill
-        
+        from openpyxl.styles import Font, PatternFill
+
         ws = wb.create_sheet("QCA Analysis")
-        
+
         # Header
         header_font = Font(bold=True, size=14)
-        ws['A1'] = "Quantitative Coronary Analysis (QCA)"
-        ws['A1'].font = header_font
-        
+        ws["A1"] = "Quantitative Coronary Analysis (QCA)"
+        ws["A1"].font = header_font
+
         # Check if QCA results are available
         qca_results = None
-        if hasattr(self, 'qca_widget') and hasattr(self.qca_widget, 'analysis_result'):
+        if hasattr(self, "qca_widget") and hasattr(self.qca_widget, "analysis_result"):
             qca_results = self.qca_widget.analysis_result
-        elif hasattr(self, 'sequential_qca_results'):
+        elif hasattr(self, "sequential_qca_results"):
             qca_results = self.sequential_qca_results
-        
+
         if not qca_results:
-            ws['A3'] = "No QCA analysis results available"
+            ws["A3"] = "No QCA analysis results available"
             return
-        
+
         # Check if we have valid sequential QCA results (dict with frame data)
-        if isinstance(qca_results, dict) and not any(isinstance(k, int) and isinstance(v, dict) and v.get('success') for k, v in qca_results.items()):
-            ws['A3'] = "No valid QCA analysis results available"
+        if isinstance(qca_results, dict) and not any(
+            isinstance(k, int) and isinstance(v, dict) and v.get("success")
+            for k, v in qca_results.items()
+        ):
+            ws["A3"] = "No valid QCA analysis results available"
             return
-        
+
         # Column headers
         headers = [
-            "Frame", "Cardiac Phase", "Stenosis (%)", "MLD (mm)", 
-            "Reference Diameter (mm)", "Lesion Length (mm)",
-            "Area Stenosis (%)", "MLA (mm²)", "Reference Area (mm²)"
+            "Frame",
+            "Cardiac Phase",
+            "Stenosis (%)",
+            "MLD (mm)",
+            "Reference Diameter (mm)",
+            "Lesion Length (mm)",
+            "Area Stenosis (%)",
+            "MLA (mm²)",
+            "Reference Area (mm²)",
         ]
-        
+
         row = 3
         for col, header in enumerate(headers, 1):
             cell = ws.cell(row=row, column=col, value=header)
             cell.font = Font(bold=True)
             cell.fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
-        
+
         # Data rows
         row += 1
-        
+
         # Handle different QCA result formats
-        if isinstance(qca_results, dict) and 'stenosis_info' in qca_results:
+        if isinstance(qca_results, dict) and "stenosis_info" in qca_results:
             # Single result format
-            info = qca_results['stenosis_info']
+            info = qca_results["stenosis_info"]
             ws.cell(row=row, column=1, value="Current")
             ws.cell(row=row, column=2, value="N/A")
             ws.cell(row=row, column=3, value=f"{info.get('percent_stenosis', 0):.1f}")
@@ -4304,281 +4795,306 @@ class MainWindow(QMainWindow):
             ws.cell(row=row, column=7, value=f"{info.get('percent_area_stenosis', 0):.1f}")
             ws.cell(row=row, column=8, value=f"{info.get('mla', 0):.2f}")
             ws.cell(row=row, column=9, value=f"{info.get('reference_area', 0):.2f}")
-        
+
         elif isinstance(qca_results, dict):
             # Sequential results format
             cardiac_phases = {
-                'd2': 'End-diastole',
-                's1': 'Early-systole', 
-                's2': 'End-systole',
-                'd1': 'Mid-diastole'
+                "d2": "End-diastole",
+                "s1": "Early-systole",
+                "s2": "End-systole",
+                "d1": "Mid-diastole",
             }
-            
+
             for frame_idx in sorted(qca_results.keys()):
                 if isinstance(frame_idx, int):
                     result = qca_results[frame_idx]
-                    if result.get('success'):
+                    if result.get("success"):
                         ws.cell(row=row, column=1, value=frame_idx)
-                        
+
                         # Get cardiac phase if available
                         phase = ""
-                        if hasattr(self, 'ekg_parser') and self.ekg_parser:
-                            frame_rate = self.dicom_parser.get_frame_rate() if hasattr(self, 'dicom_parser') else 30.0
+                        if hasattr(self, "ekg_parser") and self.ekg_parser:
+                            frame_rate = (
+                                self.dicom_parser.get_frame_rate()
+                                if hasattr(self, "dicom_parser")
+                                else 30.0
+                            )
                             frame_time = frame_idx / frame_rate
                             phase_key = self.ekg_parser.get_phase_at_time(frame_time)
                             phase = cardiac_phases.get(phase_key, phase_key) if phase_key else ""
-                        
+
                         ws.cell(row=row, column=2, value=phase)
                         ws.cell(row=row, column=3, value=f"{result.get('percent_stenosis', 0):.1f}")
                         ws.cell(row=row, column=4, value=f"{result.get('mld', 0):.2f}")
-                        ws.cell(row=row, column=5, value=f"{result.get('reference_diameter', 0):.2f}")
+                        ws.cell(
+                            row=row, column=5, value=f"{result.get('reference_diameter', 0):.2f}"
+                        )
                         ws.cell(row=row, column=6, value=f"{result.get('lesion_length', 0):.2f}")
-                        ws.cell(row=row, column=7, value=f"{result.get('percent_area_stenosis', 0):.1f}")
+                        ws.cell(
+                            row=row, column=7, value=f"{result.get('percent_area_stenosis', 0):.1f}"
+                        )
                         ws.cell(row=row, column=8, value=f"{result.get('mla', 0):.2f}")
                         ws.cell(row=row, column=9, value=f"{result.get('reference_area', 0):.2f}")
                         row += 1
-        
+
         # Auto-fit columns
         for col in range(1, len(headers) + 1):
             ws.column_dimensions[ws.cell(row=1, column=col).column_letter].width = 15
-    
+
     def _create_rws_sheet(self, wb):
         """Create RWS analysis data sheet"""
-        from openpyxl.styles import Font, Alignment, PatternFill
-        
+        from openpyxl.styles import Font
+
         ws = wb.create_sheet("RWS Analysis")
-        
+
         # Header
         header_font = Font(bold=True, size=14)
-        ws['A1'] = "Radial Wall Strain (RWS) Analysis"
-        ws['A1'].font = header_font
-        
+        ws["A1"] = "Radial Wall Strain (RWS) Analysis"
+        ws["A1"].font = header_font
+
         # Check if RWS results are available or can be calculated
         rws_results = None
-        
+
         # First, check if Enhanced RWS results are available (preferred)
-        if hasattr(self, 'rws_enhanced_results') and self.rws_enhanced_results:
+        if hasattr(self, "rws_enhanced_results") and self.rws_enhanced_results:
             rws_results = self.rws_enhanced_results
             logger.info("Using Enhanced RWS results for Excel export")
-        elif hasattr(self, 'rws_enhanced_widget') and hasattr(self.rws_enhanced_widget, 'analysis_results'):
+        elif hasattr(self, "rws_enhanced_widget") and hasattr(
+            self.rws_enhanced_widget, "analysis_results"
+        ):
             rws_results = self.rws_enhanced_widget.analysis_results
             logger.info("Using Enhanced RWS widget results for Excel export")
-        elif hasattr(self, 'rws_widget') and hasattr(self.rws_widget, 'results'):
+        elif hasattr(self, "rws_widget") and hasattr(self.rws_widget, "results"):
             rws_results = self.rws_widget.results
             logger.info("Using standard RWS widget results for Excel export")
-        
+
         # If no widget results, try to calculate from QCA data if available
-        if not rws_results and hasattr(self, 'sequential_qca_results') and self.sequential_qca_results:
+        if (
+            not rws_results
+            and hasattr(self, "sequential_qca_results")
+            and self.sequential_qca_results
+        ):
             try:
                 rws_results = self._calculate_rws_from_qca_data(self.sequential_qca_results)
             except Exception as e:
                 logger.warning(f"Failed to calculate RWS from QCA data: {e}")
-                pass
-        
+
         if not rws_results:
-            ws['A3'] = "No RWS analysis results available"
-            ws['A4'] = "RWS analysis results can be included by:"
-            ws['A5'] = "1. Running RWS analysis from the QCA results menu, or"
-            ws['A6'] = "2. Using the RWS Enhanced Analysis tab"
+            ws["A3"] = "No RWS analysis results available"
+            ws["A4"] = "RWS analysis results can be included by:"
+            ws["A5"] = "1. Running RWS analysis from the QCA results menu, or"
+            ws["A6"] = "2. Using the RWS Enhanced Analysis tab"
             return
-        
+
         # RWS Summary
         row = 3
-        ws[f'A{row}'] = "RWS Summary:"
-        ws[f'A{row}'].font = Font(bold=True)
+        ws[f"A{row}"] = "RWS Summary:"
+        ws[f"A{row}"].font = Font(bold=True)
         row += 1
-        
+
         # Extract RWS data from Enhanced or Standard analysis results
         if isinstance(rws_results, dict):
             # Check if this is Enhanced RWS results format
-            if 'stenosis_rws' in rws_results:
+            if "stenosis_rws" in rws_results:
                 # Enhanced RWS results format
-                stenosis_rws = rws_results['stenosis_rws']
-                
+                stenosis_rws = rws_results["stenosis_rws"]
+
                 # RWS Percentage (Enhanced format)
-                rws_val = stenosis_rws.get('rws_stenosis', 0)
-                ws[f'A{row}'] = "Stenosis RWS Percentage:"
-                ws[f'B{row}'] = f"{rws_val:.2f}%"
+                rws_val = stenosis_rws.get("rws_stenosis", 0)
+                ws[f"A{row}"] = "Stenosis RWS Percentage:"
+                ws[f"B{row}"] = f"{rws_val:.2f}%"
                 row += 1
-                
+
                 # MLD Information from Enhanced analysis
-                max_mld_phase = stenosis_rws.get('max_mld_phase', 'unknown')
-                min_mld_phase = stenosis_rws.get('min_mld_phase', 'unknown')
-                
-                if 'mld_values' in stenosis_rws:
-                    mld_values = stenosis_rws['mld_values']
+                max_mld_phase = stenosis_rws.get("max_mld_phase", "unknown")
+                min_mld_phase = stenosis_rws.get("min_mld_phase", "unknown")
+
+                if "mld_values" in stenosis_rws:
+                    mld_values = stenosis_rws["mld_values"]
                     if mld_values:
                         max_mld = max(mld_values.values()) if mld_values.values() else 0
                         min_mld = min(mld_values.values()) if mld_values.values() else 0
-                        
-                        ws[f'A{row}'] = "Maximum MLD (mm):"
-                        ws[f'B{row}'] = f"{max_mld:.2f}"
-                        ws[f'C{row}'] = f"Phase: {max_mld_phase}"
+
+                        ws[f"A{row}"] = "Maximum MLD (mm):"
+                        ws[f"B{row}"] = f"{max_mld:.2f}"
+                        ws[f"C{row}"] = f"Phase: {max_mld_phase}"
                         row += 1
-                        
-                        ws[f'A{row}'] = "Minimum MLD (mm):"
-                        ws[f'B{row}'] = f"{min_mld:.2f}"
-                        ws[f'C{row}'] = f"Phase: {min_mld_phase}"
+
+                        ws[f"A{row}"] = "Minimum MLD (mm):"
+                        ws[f"B{row}"] = f"{min_mld:.2f}"
+                        ws[f"C{row}"] = f"Phase: {min_mld_phase}"
                         row += 1
-                        
+
                         if max_mld > min_mld:
                             variation = max_mld - min_mld
-                            ws[f'A{row}'] = "MLD Variation (mm):"
-                            ws[f'B{row}'] = f"{variation:.2f}"
+                            ws[f"A{row}"] = "MLD Variation (mm):"
+                            ws[f"B{row}"] = f"{variation:.2f}"
                             row += 1
-                
+
                 # Enhanced analysis method
-                ws[f'A{row}'] = "Calculation Method:"
-                ws[f'B{row}'] = "Enhanced RWS Analysis with outlier detection"
+                ws[f"A{row}"] = "Calculation Method:"
+                ws[f"B{row}"] = "Enhanced RWS Analysis with outlier detection"
                 row += 1
-                
+
             else:
                 # Standard RWS results format (fallback)
                 # RWS Percentage
-                if 'rws_percentage' in rws_results:
-                    rws_val = rws_results['rws_percentage']
-                    ws[f'A{row}'] = "RWS Percentage:"
-                    ws[f'B{row}'] = f"{rws_val:.2f}%"
+                if "rws_percentage" in rws_results:
+                    rws_val = rws_results["rws_percentage"]
+                    ws[f"A{row}"] = "RWS Percentage:"
+                    ws[f"B{row}"] = f"{rws_val:.2f}%"
                     row += 1
-                
+
                 # Maximum MLD
-                if 'max_diameter' in rws_results:
-                    ws[f'A{row}'] = "Maximum MLD (mm):"
-                    ws[f'B{row}'] = f"{rws_results['max_diameter']:.2f}"
-                    if 'max_frame' in rws_results:
-                        ws[f'C{row}'] = f"Frame {rws_results['max_frame']}"
+                if "max_diameter" in rws_results:
+                    ws[f"A{row}"] = "Maximum MLD (mm):"
+                    ws[f"B{row}"] = f"{rws_results['max_diameter']:.2f}"
+                    if "max_frame" in rws_results:
+                        ws[f"C{row}"] = f"Frame {rws_results['max_frame']}"
                     row += 1
-                
+
                 # Minimum MLD
-                if 'min_diameter' in rws_results:
-                    ws[f'A{row}'] = "Minimum MLD (mm):"
-                    ws[f'B{row}'] = f"{rws_results['min_diameter']:.2f}"
-                    if 'min_frame' in rws_results:
-                        ws[f'C{row}'] = f"Frame {rws_results['min_frame']}"
+                if "min_diameter" in rws_results:
+                    ws[f"A{row}"] = "Minimum MLD (mm):"
+                    ws[f"B{row}"] = f"{rws_results['min_diameter']:.2f}"
+                    if "min_frame" in rws_results:
+                        ws[f"C{row}"] = f"Frame {rws_results['min_frame']}"
                     row += 1
-                
+
                 # MLD Variation
-                if 'max_diameter' in rws_results and 'min_diameter' in rws_results:
-                    variation = rws_results['max_diameter'] - rws_results['min_diameter']
-                    ws[f'A{row}'] = "MLD Variation (mm):"
-                    ws[f'B{row}'] = f"{variation:.2f}"
+                if "max_diameter" in rws_results and "min_diameter" in rws_results:
+                    variation = rws_results["max_diameter"] - rws_results["min_diameter"]
+                    ws[f"A{row}"] = "MLD Variation (mm):"
+                    ws[f"B{row}"] = f"{variation:.2f}"
                     row += 1
-                
+
                 # Calculation method
-                if 'method' in rws_results:
-                    ws[f'A{row}'] = "Calculation Method:"
-                    ws[f'B{row}'] = rws_results['method']
+                if "method" in rws_results:
+                    ws[f"A{row}"] = "Calculation Method:"
+                    ws[f"B{row}"] = rws_results["method"]
                     row += 1
-            
+
             # Common information for both formats
             # Frames analyzed
-            frames_analyzed = rws_results.get('frames_analyzed') or len(rws_results.get('stenosis_rws', {}).get('mld_values', {}))
+            frames_analyzed = rws_results.get("frames_analyzed") or len(
+                rws_results.get("stenosis_rws", {}).get("mld_values", {})
+            )
             if frames_analyzed:
-                ws[f'A{row}'] = "Frames Analyzed:"
-                ws[f'B{row}'] = str(frames_analyzed)
+                ws[f"A{row}"] = "Frames Analyzed:"
+                ws[f"B{row}"] = str(frames_analyzed)
                 row += 1
-            
+
             # RWS Formula
             row += 1
-            ws[f'A{row}'] = "RWS Formula:"
-            ws[f'A{row}'].font = Font(bold=True)
+            ws[f"A{row}"] = "RWS Formula:"
+            ws[f"A{row}"].font = Font(bold=True)
             row += 1
-            ws[f'A{row}'] = "Formula:"
-            ws[f'B{row}'] = "(MLDmax - MLDmin) / MLDmin × 100%"
+            ws[f"A{row}"] = "Formula:"
+            ws[f"B{row}"] = "(MLDmax - MLDmin) / MLDmin × 100%"
             row += 1
-            
+
             # Clinical interpretation
-            rws_val = rws_results.get('stenosis_rws', {}).get('rws_stenosis', 0) or rws_results.get('rws_percentage', 0)
-            ws[f'A{row}'] = "Clinical Interpretation:"
+            rws_val = rws_results.get("stenosis_rws", {}).get("rws_stenosis", 0) or rws_results.get(
+                "rws_percentage", 0
+            )
+            ws[f"A{row}"] = "Clinical Interpretation:"
             if rws_val > 12:
-                ws[f'B{row}'] = "⚠️ HIGH RWS (>12%) - Potential plaque vulnerability"
-                ws[f'B{row}'].font = Font(color="FF0000")  # Red color
+                ws[f"B{row}"] = "⚠️ HIGH RWS (>12%) - Potential plaque vulnerability"
+                ws[f"B{row}"].font = Font(color="FF0000")  # Red color
             else:
-                ws[f'B{row}'] = "✓ NORMAL RWS (<12%) - Stable plaque characteristics"
-                ws[f'B{row}'].font = Font(color="008000")  # Green color
+                ws[f"B{row}"] = "✓ NORMAL RWS (<12%) - Stable plaque characteristics"
+                ws[f"B{row}"].font = Font(color="008000")  # Green color
             row += 1
-        
+
         # Auto-fit columns
-        ws.column_dimensions['A'].width = 30
-        ws.column_dimensions['B'].width = 25
-        ws.column_dimensions['C'].width = 15
-    
+        ws.column_dimensions["A"].width = 30
+        ws.column_dimensions["B"].width = 25
+        ws.column_dimensions["C"].width = 15
+
     def _calculate_rws_from_qca_data(self, qca_results):
         """Calculate RWS using proper RWS analysis methodology"""
         if not qca_results or not isinstance(qca_results, dict):
             return None
-        
+
         try:
             # Import the proper RWS analysis class
             from ..analysis.rws_analysis import RWSAnalysis
-            
+
             # Create RWS analyzer
             rws_analyzer = RWSAnalysis()
-            
+
             # Extract frame indices for the "beat" (all available frames)
             frame_indices = [k for k in qca_results.keys() if isinstance(k, int)]
             if len(frame_indices) < 2:
                 return None
-            
+
             # Use calibration factor if available
-            calibration_factor = getattr(self, 'calibration_factor', 0.12345) or 0.12345
-            
+            calibration_factor = getattr(self, "calibration_factor", 0.12345) or 0.12345
+
             # Run RWS analysis
             rws_result = rws_analyzer.analyze_beat(
                 qca_results=qca_results,
                 beat_frames=frame_indices,
-                calibration_factor=calibration_factor
+                calibration_factor=calibration_factor,
             )
-            
-            if not rws_result.get('success'):
+
+            if not rws_result.get("success"):
                 # Fallback to simple calculation if advanced analysis fails
                 return self._simple_rws_calculation(qca_results)
-            
+
             # Return results in expected format for Excel export
             return {
-                'rws_percentage': rws_result.get('rws_at_mld', 0),
-                'max_diameter': rws_result.get('mld_max_value', 0),
-                'min_diameter': rws_result.get('mld_min_value', 0),
-                'success': True,
-                'method': 'RWS Analysis with outlier detection',
-                'frames_analyzed': rws_result.get('num_frames_analyzed', 0),
-                'min_frame': rws_result.get('mld_min_frame', 0) + 1 if rws_result.get('mld_min_frame') is not None else 'N/A',
-                'max_frame': rws_result.get('mld_max_frame', 0) + 1 if rws_result.get('mld_max_frame') is not None else 'N/A'
+                "rws_percentage": rws_result.get("rws_at_mld", 0),
+                "max_diameter": rws_result.get("mld_max_value", 0),
+                "min_diameter": rws_result.get("mld_min_value", 0),
+                "success": True,
+                "method": "RWS Analysis with outlier detection",
+                "frames_analyzed": rws_result.get("num_frames_analyzed", 0),
+                "min_frame": (
+                    rws_result.get("mld_min_frame", 0) + 1
+                    if rws_result.get("mld_min_frame") is not None
+                    else "N/A"
+                ),
+                "max_frame": (
+                    rws_result.get("mld_max_frame", 0) + 1
+                    if rws_result.get("mld_max_frame") is not None
+                    else "N/A"
+                ),
             }
-            
+
         except Exception as e:
             logger.warning(f"Advanced RWS analysis failed: {e}, falling back to simple calculation")
             return self._simple_rws_calculation(qca_results)
-    
+
     def _simple_rws_calculation(self, qca_results):
         """Fallback simple RWS calculation using correct formula"""
         if not qca_results or not isinstance(qca_results, dict):
             return None
-        
+
         # Collect MLD values from QCA results
         mld_values = []
         mld_info_by_frame = {}
-        
+
         for frame_idx, result in qca_results.items():
-            if isinstance(frame_idx, int) and isinstance(result, dict) and result.get('success'):
-                mld = result.get('mld', 0) or result.get('minimum_diameter', 0)
+            if isinstance(frame_idx, int) and isinstance(result, dict) and result.get("success"):
+                mld = result.get("mld", 0) or result.get("minimum_diameter", 0)
                 if mld > 0:
                     mld_values.append(mld)
                     mld_info_by_frame[frame_idx] = mld
-        
+
         if len(mld_values) < 2:
             return None
-        
+
         # Find min and max MLD values
         max_mld = max(mld_values)
         min_mld = min(mld_values)
-        
+
         if min_mld <= 0:
             return None
-        
+
         # CORRECT RWS Formula: (MLDmax - MLDmin) / MLDmin × 100%
         rws_percentage = ((max_mld - min_mld) / min_mld) * 100
-        
+
         # Find frames with min/max values
         min_frame = None
         max_frame = None
@@ -4587,142 +5103,147 @@ class MainWindow(QMainWindow):
                 min_frame = frame_idx + 1
             if mld_val == max_mld and max_frame is None:
                 max_frame = frame_idx + 1
-        
+
         return {
-            'rws_percentage': rws_percentage,
-            'max_diameter': max_mld,
-            'min_diameter': min_mld,
-            'success': True,
-            'method': 'Simple RWS calculation from QCA MLD values',
-            'frames_analyzed': len(mld_values),
-            'min_frame': min_frame,
-            'max_frame': max_frame
+            "rws_percentage": rws_percentage,
+            "max_diameter": max_mld,
+            "min_diameter": min_mld,
+            "success": True,
+            "method": "Simple RWS calculation from QCA MLD values",
+            "frames_analyzed": len(mld_values),
+            "min_frame": min_frame,
+            "max_frame": max_frame,
         }
-    
+
     def _clean_filename(self, filename):
         """Clean filename by removing invalid characters for cross-platform compatibility"""
         import re
+
         # Remove or replace invalid characters for Windows/Mac/Linux filenames
         # Invalid characters: < > : " | ? * / \ and control characters
         invalid_chars = r'[<>:"|?*/\\]'
-        cleaned = re.sub(invalid_chars, '_', filename)
-        
+        cleaned = re.sub(invalid_chars, "_", filename)
+
         # Remove control characters and excessive whitespace
-        cleaned = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', cleaned)
-        cleaned = re.sub(r'\s+', '_', cleaned)
-        
+        cleaned = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", cleaned)
+        cleaned = re.sub(r"\s+", "_", cleaned)
+
         # Remove leading/trailing dots and spaces (Windows issue)
-        cleaned = cleaned.strip('. ')
-        
+        cleaned = cleaned.strip(". ")
+
         # Limit length to reasonable size (Windows has 255 char limit)
         if len(cleaned) > 50:
             cleaned = cleaned[:50]
-        
+
         # If empty after cleaning, return 'Patient'
-        return cleaned if cleaned else 'Patient'
-    
+        return cleaned if cleaned else "Patient"
+
     def _create_dicom_metadata_sheet(self, wb):
         """Create DICOM metadata sheet"""
-        from openpyxl.styles import Font, Alignment, PatternFill
-        
+        from openpyxl.styles import Font
+
         ws = wb.create_sheet("DICOM Metadata")
-        
+
         # Header
         header_font = Font(bold=True, size=14)
-        ws['A1'] = "DICOM Metadata"
-        ws['A1'].font = header_font
-        
-        if not hasattr(self, 'dicom_parser') or not self.dicom_parser or not self.dicom_parser.dicom_data:
-            ws['A3'] = "No DICOM data available"
+        ws["A1"] = "DICOM Metadata"
+        ws["A1"].font = header_font
+
+        if (
+            not hasattr(self, "dicom_parser")
+            or not self.dicom_parser
+            or not self.dicom_parser.dicom_data
+        ):
+            ws["A3"] = "No DICOM data available"
             return
-        
+
         dicom_data = self.dicom_parser.dicom_data
         row = 3
-        
+
         # Patient Information
-        ws[f'A{row}'] = "Patient Information:"
-        ws[f'A{row}'].font = Font(bold=True, size=12)
+        ws[f"A{row}"] = "Patient Information:"
+        ws[f"A{row}"].font = Font(bold=True, size=12)
         row += 1
-        
+
         patient_fields = [
-            ('PatientName', 'Patient Name'),
-            ('PatientID', 'Patient ID'),
-            ('PatientBirthDate', 'Birth Date'),
-            ('PatientSex', 'Sex'),
-            ('PatientAge', 'Age'),
-            ('PatientWeight', 'Weight'),
-            ('PatientSize', 'Height')
+            ("PatientName", "Patient Name"),
+            ("PatientID", "Patient ID"),
+            ("PatientBirthDate", "Birth Date"),
+            ("PatientSex", "Sex"),
+            ("PatientAge", "Age"),
+            ("PatientWeight", "Weight"),
+            ("PatientSize", "Height"),
         ]
-        
+
         for tag, label in patient_fields:
             if hasattr(dicom_data, tag):
-                value = str(getattr(dicom_data, tag, ''))
-                ws[f'A{row}'] = f"{label}:"
-                ws[f'B{row}'] = value
+                value = str(getattr(dicom_data, tag, ""))
+                ws[f"A{row}"] = f"{label}:"
+                ws[f"B{row}"] = value
                 row += 1
-        
+
         row += 1
-        
+
         # Study Information
-        ws[f'A{row}'] = "Study Information:"
-        ws[f'A{row}'].font = Font(bold=True, size=12)
+        ws[f"A{row}"] = "Study Information:"
+        ws[f"A{row}"].font = Font(bold=True, size=12)
         row += 1
-        
+
         study_fields = [
-            ('StudyDate', 'Study Date'),
-            ('StudyTime', 'Study Time'),
-            ('StudyID', 'Study ID'),
-            ('StudyDescription', 'Study Description'),
-            ('SeriesDescription', 'Series Description'),
-            ('Modality', 'Modality'),
-            ('Manufacturer', 'Manufacturer'),
-            ('ManufacturerModelName', 'Model Name'),
-            ('SoftwareVersions', 'Software Version')
+            ("StudyDate", "Study Date"),
+            ("StudyTime", "Study Time"),
+            ("StudyID", "Study ID"),
+            ("StudyDescription", "Study Description"),
+            ("SeriesDescription", "Series Description"),
+            ("Modality", "Modality"),
+            ("Manufacturer", "Manufacturer"),
+            ("ManufacturerModelName", "Model Name"),
+            ("SoftwareVersions", "Software Version"),
         ]
-        
+
         for tag, label in study_fields:
             if hasattr(dicom_data, tag):
-                value = str(getattr(dicom_data, tag, ''))
-                ws[f'A{row}'] = f"{label}:"
-                ws[f'B{row}'] = value
+                value = str(getattr(dicom_data, tag, ""))
+                ws[f"A{row}"] = f"{label}:"
+                ws[f"B{row}"] = value
                 row += 1
-        
+
         row += 1
-        
+
         # Image Information
-        ws[f'A{row}'] = "Image Information:"
-        ws[f'A{row}'].font = Font(bold=True, size=12)
+        ws[f"A{row}"] = "Image Information:"
+        ws[f"A{row}"].font = Font(bold=True, size=12)
         row += 1
-        
+
         # Image dimensions
-        if hasattr(self.dicom_parser, 'pixel_array') and self.dicom_parser.pixel_array is not None:
+        if hasattr(self.dicom_parser, "pixel_array") and self.dicom_parser.pixel_array is not None:
             shape = self.dicom_parser.pixel_array.shape
-            ws[f'A{row}'] = "Image Dimensions:"
+            ws[f"A{row}"] = "Image Dimensions:"
             if len(shape) == 3:
-                ws[f'B{row}'] = f"{shape[2]} x {shape[1]} pixels, {shape[0]} frames"
+                ws[f"B{row}"] = f"{shape[2]} x {shape[1]} pixels, {shape[0]} frames"
             else:
-                ws[f'B{row}'] = f"{shape[1]} x {shape[0]} pixels"
+                ws[f"B{row}"] = f"{shape[1]} x {shape[0]} pixels"
             row += 1
-        
+
         image_fields = [
-            ('PixelSpacing', 'Pixel Spacing'),
-            ('ImagerPixelSpacing', 'Imager Pixel Spacing'),
-            ('SliceThickness', 'Slice Thickness'),
-            ('KVP', 'kVp'),
-            ('ExposureTime', 'Exposure Time'),
-            ('XRayTubeCurrent', 'Tube Current'),
-            ('FilterType', 'Filter Type'),
-            ('FrameRate', 'Frame Rate'),
-            ('CineRate', 'Cine Rate')
+            ("PixelSpacing", "Pixel Spacing"),
+            ("ImagerPixelSpacing", "Imager Pixel Spacing"),
+            ("SliceThickness", "Slice Thickness"),
+            ("KVP", "kVp"),
+            ("ExposureTime", "Exposure Time"),
+            ("XRayTubeCurrent", "Tube Current"),
+            ("FilterType", "Filter Type"),
+            ("FrameRate", "Frame Rate"),
+            ("CineRate", "Cine Rate"),
         ]
-        
+
         for tag, label in image_fields:
             if hasattr(dicom_data, tag):
-                value = str(getattr(dicom_data, tag, ''))
-                ws[f'A{row}'] = f"{label}:"
-                ws[f'B{row}'] = value
+                value = str(getattr(dicom_data, tag, ""))
+                ws[f"A{row}"] = f"{label}:"
+                ws[f"B{row}"] = value
                 row += 1
-        
+
         # Auto-fit columns
-        ws.column_dimensions['A'].width = 30
-        ws.column_dimensions['B'].width = 40
+        ws.column_dimensions["A"].width = 30
+        ws.column_dimensions["B"].width = 40

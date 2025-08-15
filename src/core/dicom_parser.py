@@ -11,6 +11,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class DicomParser:
     """Parser for DICOM files with support for Siemens/GE formats"""
 
@@ -48,26 +49,41 @@ class DicomParser:
             # Extract pixel data
             self.pixel_array = self.dicom_data.pixel_array
 
-
             # Extract pixel spacing (prefer PixelSpacing, fallback to ImagerPixelSpacing)
-            if hasattr(self.dicom_data, 'PixelSpacing'):
+            if hasattr(self.dicom_data, "PixelSpacing"):
                 pixel_spacing_row = float(self.dicom_data.PixelSpacing[0])
-                pixel_spacing_col = float(self.dicom_data.PixelSpacing[1]) if len(self.dicom_data.PixelSpacing) > 1 else pixel_spacing_row
+                pixel_spacing_col = (
+                    float(self.dicom_data.PixelSpacing[1])
+                    if len(self.dicom_data.PixelSpacing) > 1
+                    else pixel_spacing_row
+                )
                 self.pixel_spacing = pixel_spacing_row  # Keep for backward compatibility
                 self.pixel_spacing_row = pixel_spacing_row
                 self.pixel_spacing_col = pixel_spacing_col
-                logger.info(f"DICOM PixelSpacing: row={pixel_spacing_row:.5f}, col={pixel_spacing_col:.5f} mm/pixel")
+                logger.info(
+                    f"DICOM PixelSpacing: row={pixel_spacing_row:.5f}, col={pixel_spacing_col:.5f} mm/pixel"
+                )
                 if abs(pixel_spacing_row - pixel_spacing_col) > 0.001:
-                    logger.warning(f"Non-square pixels detected! Aspect ratio: {pixel_spacing_row/pixel_spacing_col:.3f}")
-            elif hasattr(self.dicom_data, 'ImagerPixelSpacing'):
+                    logger.warning(
+                        f"Non-square pixels detected! Aspect ratio: {pixel_spacing_row/pixel_spacing_col:.3f}"
+                    )
+            elif hasattr(self.dicom_data, "ImagerPixelSpacing"):
                 pixel_spacing_row = float(self.dicom_data.ImagerPixelSpacing[0])
-                pixel_spacing_col = float(self.dicom_data.ImagerPixelSpacing[1]) if len(self.dicom_data.ImagerPixelSpacing) > 1 else pixel_spacing_row
+                pixel_spacing_col = (
+                    float(self.dicom_data.ImagerPixelSpacing[1])
+                    if len(self.dicom_data.ImagerPixelSpacing) > 1
+                    else pixel_spacing_row
+                )
                 self.pixel_spacing = pixel_spacing_row  # Keep for backward compatibility
                 self.pixel_spacing_row = pixel_spacing_row
                 self.pixel_spacing_col = pixel_spacing_col
-                logger.info(f"DICOM ImagerPixelSpacing: row={pixel_spacing_row:.5f}, col={pixel_spacing_col:.5f} mm/pixel")
+                logger.info(
+                    f"DICOM ImagerPixelSpacing: row={pixel_spacing_row:.5f}, col={pixel_spacing_col:.5f} mm/pixel"
+                )
                 if abs(pixel_spacing_row - pixel_spacing_col) > 0.001:
-                    logger.warning(f"Non-square pixels detected! Aspect ratio: {pixel_spacing_row/pixel_spacing_col:.3f}")
+                    logger.warning(
+                        f"Non-square pixels detected! Aspect ratio: {pixel_spacing_row/pixel_spacing_col:.3f}"
+                    )
             else:
                 self.pixel_spacing = None
                 self.pixel_spacing_row = None
@@ -102,53 +118,63 @@ class DicomParser:
             return
 
         # Basic patient info (anonymized)
-        self.metadata['patient_name'] = getattr(self.dicom_data, 'PatientName', 'Anonymous')
-        self.metadata['patient_id'] = getattr(self.dicom_data, 'PatientID', 'Unknown')
-        self.metadata['study_date'] = getattr(self.dicom_data, 'StudyDate', '')
-        self.metadata['modality'] = getattr(self.dicom_data, 'Modality', '')
+        self.metadata["patient_name"] = getattr(self.dicom_data, "PatientName", "Anonymous")
+        self.metadata["patient_id"] = getattr(self.dicom_data, "PatientID", "Unknown")
+        self.metadata["study_date"] = getattr(self.dicom_data, "StudyDate", "")
+        self.metadata["modality"] = getattr(self.dicom_data, "Modality", "")
 
         # Image info
-        self.metadata['rows'] = getattr(self.dicom_data, 'Rows', 0)
-        self.metadata['columns'] = getattr(self.dicom_data, 'Columns', 0)
-        self.metadata['bits_stored'] = getattr(self.dicom_data, 'BitsStored', 0)
+        self.metadata["rows"] = getattr(self.dicom_data, "Rows", 0)
+        self.metadata["columns"] = getattr(self.dicom_data, "Columns", 0)
+        self.metadata["bits_stored"] = getattr(self.dicom_data, "BitsStored", 0)
 
         # Window/Level defaults
-        self.metadata['window_center'] = getattr(self.dicom_data, 'WindowCenter', 128)
-        self.metadata['window_width'] = getattr(self.dicom_data, 'WindowWidth', 256)
+        self.metadata["window_center"] = getattr(self.dicom_data, "WindowCenter", 128)
+        self.metadata["window_width"] = getattr(self.dicom_data, "WindowWidth", 256)
 
         # Handle list values
-        if isinstance(self.metadata['window_center'], (list, pydicom.multival.MultiValue)):
-            self.metadata['window_center'] = float(self.metadata['window_center'][0])
-        if isinstance(self.metadata['window_width'], (list, pydicom.multival.MultiValue)):
-            self.metadata['window_width'] = float(self.metadata['window_width'][0])
+        if isinstance(self.metadata["window_center"], (list, pydicom.multival.MultiValue)):
+            self.metadata["window_center"] = float(self.metadata["window_center"][0])
+        if isinstance(self.metadata["window_width"], (list, pydicom.multival.MultiValue)):
+            self.metadata["window_width"] = float(self.metadata["window_width"][0])
 
         # Frame timing info
-        if hasattr(self.dicom_data, 'FrameTime'):
-            self.metadata['frame_time'] = float(self.dicom_data.FrameTime)
-        elif hasattr(self.dicom_data, 'FrameTimeVector'):
-            self.metadata['frame_time_vector'] = list(self.dicom_data.FrameTimeVector)
+        if hasattr(self.dicom_data, "FrameTime"):
+            self.metadata["frame_time"] = float(self.dicom_data.FrameTime)
+        elif hasattr(self.dicom_data, "FrameTimeVector"):
+            self.metadata["frame_time_vector"] = list(self.dicom_data.FrameTimeVector)
 
         # Projection/View angle information
-        if hasattr(self.dicom_data, 'PositionerPrimaryAngle') and self.dicom_data.PositionerPrimaryAngle is not None:
+        if (
+            hasattr(self.dicom_data, "PositionerPrimaryAngle")
+            and self.dicom_data.PositionerPrimaryAngle is not None
+        ):
             try:
-                self.metadata['positioner_primary_angle'] = float(self.dicom_data.PositionerPrimaryAngle)
+                self.metadata["positioner_primary_angle"] = float(
+                    self.dicom_data.PositionerPrimaryAngle
+                )
             except (ValueError, TypeError):
                 pass
 
-        if hasattr(self.dicom_data, 'PositionerSecondaryAngle') and self.dicom_data.PositionerSecondaryAngle is not None:
+        if (
+            hasattr(self.dicom_data, "PositionerSecondaryAngle")
+            and self.dicom_data.PositionerSecondaryAngle is not None
+        ):
             try:
-                self.metadata['positioner_secondary_angle'] = float(self.dicom_data.PositionerSecondaryAngle)
+                self.metadata["positioner_secondary_angle"] = float(
+                    self.dicom_data.PositionerSecondaryAngle
+                )
             except (ValueError, TypeError):
                 pass
 
-        if hasattr(self.dicom_data, 'ViewPosition'):
-            self.metadata['view_position'] = str(self.dicom_data.ViewPosition)
+        if hasattr(self.dicom_data, "ViewPosition"):
+            self.metadata["view_position"] = str(self.dicom_data.ViewPosition)
 
-        if hasattr(self.dicom_data, 'SeriesDescription'):
-            self.metadata['series_description'] = str(self.dicom_data.SeriesDescription)
+        if hasattr(self.dicom_data, "SeriesDescription"):
+            self.metadata["series_description"] = str(self.dicom_data.SeriesDescription)
 
         # Frame count for multi-frame files
-        self.metadata['num_frames'] = self.num_frames
+        self.metadata["num_frames"] = self.num_frames
 
     def get_frame(self, frame_index: int) -> Optional[np.ndarray]:
         """
@@ -169,8 +195,9 @@ class DicomParser:
 
         return self.pixel_array[frame_index]
 
-    def apply_window_level(self, frame: np.ndarray, window_center: float = None,
-                          window_width: float = None) -> np.ndarray:
+    def apply_window_level(
+        self, frame: np.ndarray, window_center: float = None, window_width: float = None
+    ) -> np.ndarray:
         """
         Apply window/level transformation to frame
 
@@ -183,9 +210,9 @@ class DicomParser:
             Windowed frame as uint8
         """
         if window_center is None:
-            window_center = self.metadata.get('window_center', 128)
+            window_center = self.metadata.get("window_center", 128)
         if window_width is None:
-            window_width = self.metadata.get('window_width', 256)
+            window_width = self.metadata.get("window_width", 256)
 
         # Calculate window bounds
         lower = window_center - window_width / 2
@@ -205,12 +232,14 @@ class DicomParser:
     def get_window_presets(self) -> Dict[str, tuple]:
         """Get common window/level presets for angiography"""
         return {
-            'Default': (self.metadata.get('window_center', 128),
-                       self.metadata.get('window_width', 256)),
-            'Angio': (300, 600),
-            'Bone': (400, 1500),
-            'Soft Tissue': (40, 400),
-            'Lung': (-600, 1500)
+            "Default": (
+                self.metadata.get("window_center", 128),
+                self.metadata.get("window_width", 256),
+            ),
+            "Angio": (300, 600),
+            "Bone": (400, 1500),
+            "Soft Tissue": (40, 400),
+            "Lung": (-600, 1500),
         }
 
     def _load_dicomdir(self, dicomdir_path: Path) -> bool:
@@ -234,7 +263,7 @@ class DicomParser:
             for record in dicomdir.DirectoryRecordSequence:
                 if record.DirectoryRecordType == "IMAGE":
                     # Get referenced file
-                    if hasattr(record, 'ReferencedFileID'):
+                    if hasattr(record, "ReferencedFileID"):
                         file_path = base_dir
                         for part in record.ReferencedFileID:
                             file_path = file_path / part
@@ -284,14 +313,14 @@ class DicomParser:
 
             # Process each series
             for series_record in series_records:
-                series_uid = getattr(series_record, 'SeriesInstanceUID', None)
+                series_uid = getattr(series_record, "SeriesInstanceUID", None)
                 if not series_uid:
                     continue
 
                 # Find first image in this series to get metadata
                 for image_record in series_record.DirectoryRecordSequence:
                     if image_record.DirectoryRecordType == "IMAGE":
-                        if hasattr(image_record, 'ReferencedFileID'):
+                        if hasattr(image_record, "ReferencedFileID"):
                             file_path = base_dir
                             for part in image_record.ReferencedFileID:
                                 file_path = file_path / part
@@ -303,53 +332,56 @@ class DicomParser:
 
                                     # Extract projection metadata
                                     metadata = {
-                                        'file_path': str(file_path),
-                                        'series_uid': series_uid
+                                        "file_path": str(file_path),
+                                        "series_uid": series_uid,
                                     }
 
                                     # Extract projection angles
                                     primary_angle = None
                                     secondary_angle = None
 
-                                    if hasattr(dcm, 'PositionerPrimaryAngle'):
+                                    if hasattr(dcm, "PositionerPrimaryAngle"):
                                         primary_angle = float(dcm.PositionerPrimaryAngle)
-                                        metadata['positioner_primary_angle'] = primary_angle
+                                        metadata["positioner_primary_angle"] = primary_angle
 
-                                    if hasattr(dcm, 'PositionerSecondaryAngle'):
+                                    if hasattr(dcm, "PositionerSecondaryAngle"):
                                         secondary_angle = float(dcm.PositionerSecondaryAngle)
-                                        metadata['positioner_secondary_angle'] = secondary_angle
+                                        metadata["positioner_secondary_angle"] = secondary_angle
 
-                                    if hasattr(dcm, 'ViewPosition'):
-                                        metadata['view_position'] = str(dcm.ViewPosition)
+                                    if hasattr(dcm, "ViewPosition"):
+                                        metadata["view_position"] = str(dcm.ViewPosition)
 
-                                    if hasattr(dcm, 'SeriesDescription'):
-                                        metadata['series_description'] = str(dcm.SeriesDescription)
+                                    if hasattr(dcm, "SeriesDescription"):
+                                        metadata["series_description"] = str(dcm.SeriesDescription)
 
                                     # Basic info
-                                    metadata['patient_name'] = getattr(dcm, 'PatientName', 'Anonymous')
-                                    metadata['study_date'] = getattr(dcm, 'StudyDate', '')
-                                    metadata['rows'] = getattr(dcm, 'Rows', 0)
-                                    metadata['columns'] = getattr(dcm, 'Columns', 0)
+                                    metadata["patient_name"] = getattr(
+                                        dcm, "PatientName", "Anonymous"
+                                    )
+                                    metadata["study_date"] = getattr(dcm, "StudyDate", "")
+                                    metadata["rows"] = getattr(dcm, "Rows", 0)
+                                    metadata["columns"] = getattr(dcm, "Columns", 0)
 
                                     # Check if multi-frame
-                                    if hasattr(dcm, 'NumberOfFrames'):
-                                        metadata['num_frames'] = int(dcm.NumberOfFrames)
+                                    if hasattr(dcm, "NumberOfFrames"):
+                                        metadata["num_frames"] = int(dcm.NumberOfFrames)
                                     else:
-                                        metadata['num_frames'] = 1
+                                        metadata["num_frames"] = 1
 
                                     # Create unique key for this projection
                                     # Use angles if available, otherwise use series UID
                                     if primary_angle is not None and secondary_angle is not None:
-                                        projection_key = f"{primary_angle:.1f}_{secondary_angle:.1f}"
+                                        projection_key = (
+                                            f"{primary_angle:.1f}_{secondary_angle:.1f}"
+                                        )
                                     else:
                                         projection_key = series_uid
 
                                     # Only add if we haven't seen this projection
                                     if projection_key not in series_projections:
-                                        projections.append({
-                                            'file_path': str(file_path),
-                                            'metadata': metadata
-                                        })
+                                        projections.append(
+                                            {"file_path": str(file_path), "metadata": metadata}
+                                        )
                                         series_projections[projection_key] = True
 
                                     break  # Only need first image per series
@@ -382,7 +414,7 @@ class DicomParser:
 
             # Find all DICOM files
             dicom_files = []
-            for ext in ['*.dcm', '*.DCM', '*.dicom', '*.DICOM']:
+            for ext in ["*.dcm", "*.DCM", "*.dicom", "*.DICOM"]:
                 dicom_files.extend(folder_path.glob(ext))
 
             # Also check files without extension
@@ -394,7 +426,7 @@ class DicomParser:
                         dicom_files.append(file)
                     except (AttributeError, KeyError, ValueError) as e:
 
-                        logger.warning(f'Ignored exception: {e}')
+                        logger.warning(f"Ignored exception: {e}")
 
             # Process each DICOM file
             for file_path in dicom_files:
@@ -402,47 +434,53 @@ class DicomParser:
                     dcm = pydicom.dcmread(str(file_path), stop_before_pixels=True)
 
                     # Extract metadata
-                    metadata = {'file_path': str(file_path)}
+                    metadata = {"file_path": str(file_path)}
 
                     # Extract projection angles
                     primary_angle = None
                     secondary_angle = None
 
-                    if hasattr(dcm, 'PositionerPrimaryAngle') and dcm.PositionerPrimaryAngle is not None:
+                    if (
+                        hasattr(dcm, "PositionerPrimaryAngle")
+                        and dcm.PositionerPrimaryAngle is not None
+                    ):
                         try:
                             primary_angle = float(dcm.PositionerPrimaryAngle)
-                            metadata['positioner_primary_angle'] = primary_angle
+                            metadata["positioner_primary_angle"] = primary_angle
                         except (ValueError, TypeError):
                             pass
 
-                    if hasattr(dcm, 'PositionerSecondaryAngle') and dcm.PositionerSecondaryAngle is not None:
+                    if (
+                        hasattr(dcm, "PositionerSecondaryAngle")
+                        and dcm.PositionerSecondaryAngle is not None
+                    ):
                         try:
                             secondary_angle = float(dcm.PositionerSecondaryAngle)
-                            metadata['positioner_secondary_angle'] = secondary_angle
+                            metadata["positioner_secondary_angle"] = secondary_angle
                         except (ValueError, TypeError):
                             pass
 
-                    if hasattr(dcm, 'ViewPosition'):
-                        metadata['view_position'] = str(dcm.ViewPosition)
+                    if hasattr(dcm, "ViewPosition"):
+                        metadata["view_position"] = str(dcm.ViewPosition)
 
-                    if hasattr(dcm, 'SeriesDescription'):
-                        metadata['series_description'] = str(dcm.SeriesDescription)
+                    if hasattr(dcm, "SeriesDescription"):
+                        metadata["series_description"] = str(dcm.SeriesDescription)
 
                     # Basic info
-                    metadata['patient_name'] = getattr(dcm, 'PatientName', 'Anonymous')
-                    metadata['study_date'] = getattr(dcm, 'StudyDate', '')
-                    metadata['rows'] = getattr(dcm, 'Rows', 0)
-                    metadata['columns'] = getattr(dcm, 'Columns', 0)
+                    metadata["patient_name"] = getattr(dcm, "PatientName", "Anonymous")
+                    metadata["study_date"] = getattr(dcm, "StudyDate", "")
+                    metadata["rows"] = getattr(dcm, "Rows", 0)
+                    metadata["columns"] = getattr(dcm, "Columns", 0)
 
                     # Check if multi-frame
-                    if hasattr(dcm, 'NumberOfFrames'):
-                        metadata['num_frames'] = int(dcm.NumberOfFrames)
+                    if hasattr(dcm, "NumberOfFrames"):
+                        metadata["num_frames"] = int(dcm.NumberOfFrames)
                     else:
-                        metadata['num_frames'] = 1
+                        metadata["num_frames"] = 1
 
                     # Get series UID
-                    series_uid = getattr(dcm, 'SeriesInstanceUID', str(file_path))
-                    metadata['series_uid'] = series_uid
+                    series_uid = getattr(dcm, "SeriesInstanceUID", str(file_path))
+                    metadata["series_uid"] = series_uid
 
                     # Create unique key for this projection
                     if primary_angle is not None and secondary_angle is not None:
@@ -452,10 +490,7 @@ class DicomParser:
 
                     # Only add if we haven't seen this projection
                     if projection_key not in projection_map:
-                        projections.append({
-                            'file_path': str(file_path),
-                            'metadata': metadata
-                        })
+                        projections.append({"file_path": str(file_path), "metadata": metadata})
                         projection_map[projection_key] = True
 
                 except (AttributeError, KeyError, ValueError) as e:
@@ -473,9 +508,9 @@ class DicomParser:
 
     def get_frame_rate(self) -> float:
         """Get frame rate in frames per second"""
-        if 'frame_time' in self.metadata:
+        if "frame_time" in self.metadata:
             # Frame time is in milliseconds
-            frame_time_ms = self.metadata['frame_time']
+            frame_time_ms = self.metadata["frame_time"]
             if frame_time_ms > 0:
                 return 1000.0 / frame_time_ms
 

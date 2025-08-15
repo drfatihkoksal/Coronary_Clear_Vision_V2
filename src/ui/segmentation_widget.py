@@ -2,25 +2,36 @@
 Vessel Segmentation Widget - Clean Implementation
 """
 
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-                            QLabel, QGroupBox, QCheckBox, QProgressBar, QMessageBox,
-                            QFileDialog, QApplication)
+from PyQt6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QLabel,
+    QGroupBox,
+    QCheckBox,
+    QProgressBar,
+    QMessageBox,
+    QFileDialog,
+    QApplication,
+)
 from PyQt6.QtCore import pyqtSignal, QThread, pyqtSlot
 from typing import Dict
 import logging
 import numpy as np
 from datetime import datetime
 from pathlib import Path
-from ..core.sequential_processor import create_single_frame_processor
-from ..services.segmentation_service import SegmentationService
+
 # from ..analysis.traditional_segmentation import TraditionalSegmentation  # Removed - file deleted
 
 logger = logging.getLogger(__name__)
+
 
 # Legacy SegmentationThread kept for compatibility but deprecated
 # Use UnifiedSegmentationProcessor instead
 class SegmentationThread(QThread):
     """Worker thread for segmentation processing - DEPRECATED"""
+
     progress = pyqtSignal(str, int)  # status, percentage
     finished = pyqtSignal(dict)  # result
     error = pyqtSignal(str)
@@ -33,18 +44,17 @@ class SegmentationThread(QThread):
 
     def run(self):
         try:
+
             def progress_callback(status: str, percentage: int):
                 self.progress.emit(status, percentage)
 
             result = self.model.segment_vessel(
-                self.image,
-                self.user_points,
-                progress_callback=progress_callback
+                self.image, self.user_points, progress_callback=progress_callback
             )
 
             # Debug: Log result statistics
-            if result.get('success') and result.get('centerline') is not None:
-                centerline = result['centerline']
+            if result.get("success") and result.get("centerline") is not None:
+                centerline = result["centerline"]
                 logger.info(f"SegmentationThread: Centerline has {len(centerline)} points")
                 if len(centerline) <= 10:
                     logger.info(f"SegmentationThread: All centerline points: {centerline}")
@@ -54,6 +64,7 @@ class SegmentationThread(QThread):
         except Exception as e:
             logger.error(f"Segmentation failed: {e}")
             self.error.emit(str(e))
+
 
 class SegmentationWidget(QWidget):
     """Widget for vessel segmentation control"""
@@ -98,7 +109,9 @@ class SegmentationWidget(QWidget):
 
         # Frame point status
         self.frame_status_label = QLabel("Frame status: Checking...")
-        self.frame_status_label.setStyleSheet("font-size: 11px; color: #666; background-color: #f0f0f0; padding: 5px; border-radius: 3px;")
+        self.frame_status_label.setStyleSheet(
+            "font-size: 11px; color: #666; background-color: #f0f0f0; padding: 5px; border-radius: 3px;"
+        )
         self.frame_status_label.setWordWrap(True)
         mode_layout.addWidget(self.frame_status_label)
 
@@ -189,7 +202,8 @@ class SegmentationWidget(QWidget):
         self.qca_button = QPushButton("Perform QCA Analysis")
         self.qca_button.clicked.connect(self.perform_qca_analysis)
         self.qca_button.setEnabled(False)
-        self.qca_button.setStyleSheet("""
+        self.qca_button.setStyleSheet(
+            """
             QPushButton {
                 background-color: #2E7D32;
                 color: white;
@@ -199,7 +213,8 @@ class SegmentationWidget(QWidget):
             QPushButton:hover {
                 background-color: #388E3C;
             }
-        """)
+        """
+        )
         action_layout.addWidget(self.qca_button)
 
         action_group.setLayout(action_layout)
@@ -227,7 +242,9 @@ class SegmentationWidget(QWidget):
 
         if self.segmentation_mode:
             self.mode_button.setText("Disable Segmentation Mode")
-            self.instructions.setText("Click vessel points (unlimited - 1, 2, 3, 4+ points supported)")
+            self.instructions.setText(
+                "Click vessel points (unlimited - 1, 2, 3, 4+ points supported)"
+            )
             self.clear_button.setEnabled(True)
 
             # Check for existing tracking points in current frame
@@ -278,12 +295,12 @@ class SegmentationWidget(QWidget):
             self.instructions.setText("Click proximal and distal stenosis points")
 
         # Notify viewer to clear segmentation points
-        if self.main_window and hasattr(self.main_window, 'viewer_widget'):
+        if self.main_window and hasattr(self.main_window, "viewer_widget"):
             viewer = self.main_window.viewer_widget
-            if hasattr(viewer, 'clear_user_points'):
+            if hasattr(viewer, "clear_user_points"):
                 viewer.clear_user_points()
             # Also clear segmentation-specific display if exists
-            if hasattr(viewer, 'clear_segmentation_points'):
+            if hasattr(viewer, "clear_segmentation_points"):
                 viewer.clear_segmentation_points()
 
         logger.info("Points cleared")
@@ -294,13 +311,13 @@ class SegmentationWidget(QWidget):
     def perform_segmentation(self):
         """Start segmentation using traditional methods"""
         # Use traditional segmentation instead of requiring model
-        if not hasattr(self, 'traditional_segmenter'):
+        if not hasattr(self, "traditional_segmenter"):
             self.traditional_segmenter = TraditionalSegmentation()
 
         # Get current image and frame index
         main_window = self.main_window or self.window()
 
-        if not main_window or not hasattr(main_window, 'viewer_widget'):
+        if not main_window or not hasattr(main_window, "viewer_widget"):
             QMessageBox.warning(self, "Error", "No viewer found")
             return
 
@@ -309,14 +326,14 @@ class SegmentationWidget(QWidget):
         current_frame_idx = 0
 
         # Get current frame index
-        if hasattr(viewer, 'current_frame_idx'):
+        if hasattr(viewer, "current_frame_idx"):
             current_frame_idx = viewer.current_frame_idx
-        elif hasattr(viewer, 'current_frame_index'):
+        elif hasattr(viewer, "current_frame_index"):
             current_frame_idx = viewer.current_frame_index
 
-        if hasattr(viewer, 'get_current_frame'):
+        if hasattr(viewer, "get_current_frame"):
             image = viewer.get_current_frame()
-        elif hasattr(viewer, 'current_frame'):
+        elif hasattr(viewer, "current_frame"):
             image = viewer.current_frame
 
         if image is None:
@@ -332,22 +349,22 @@ class SegmentationWidget(QWidget):
 
         # Clear any existing overlay before starting new segmentation
         # This prevents old markers from appearing in new segmentation
-        if hasattr(viewer, 'clear_overlays'):
+        if hasattr(viewer, "clear_overlays"):
             viewer.clear_overlays()
             # Force immediate update to ensure old overlay is gone
-            if hasattr(viewer, '_batch_update'):
+            if hasattr(viewer, "_batch_update"):
                 viewer._batch_update()
-            elif hasattr(viewer, 'update'):
+            elif hasattr(viewer, "update"):
                 viewer.update()
-        
+
         # Also clear any segmentation-specific data
-        if hasattr(viewer, 'overlay_item') and hasattr(viewer.overlay_item, 'segmentation_mask'):
+        if hasattr(viewer, "overlay_item") and hasattr(viewer.overlay_item, "segmentation_mask"):
             viewer.overlay_item.segmentation_mask = None
             viewer.overlay_item.update()
-        
+
         # Process events to ensure UI is updated before starting thread
         QApplication.processEvents()
-        
+
         # Disable UI
         self.segment_button.setEnabled(False)
         self.clear_button.setEnabled(False)
@@ -355,20 +372,20 @@ class SegmentationWidget(QWidget):
         self.status_label.setVisible(True)
 
         # Make sure segmentation model is available in the main window
-        if hasattr(main_window, 'segmentation_model'):
+        if hasattr(main_window, "segmentation_model"):
             main_window.segmentation_model = self.segmentation_model
-        
+
         # Use original centerline length - no interpolation toggle
-            
+
         # Get curvature-resistant centerline setting from main window
         use_curvature_resistant = False  # Default
-        if hasattr(main_window, 'curvature_resistant_checkbox'):
-            use_curvature_resistant = main_window.curvature_resistant_checkbox.isChecked()
-        
+        if hasattr(main_window, "curvature_resistant_checkbox"):
+            main_window.curvature_resistant_checkbox.isChecked()
+
         # Use traditional segmentation directly
         try:
             self.on_progress("Starting traditional segmentation...", 10)
-            
+
             # Convert image to proper format if needed
             if len(image.shape) == 3 and image.shape[2] == 3:
                 # RGB image
@@ -378,32 +395,32 @@ class SegmentationWidget(QWidget):
                 segmentation_image = np.stack([image, image, image], axis=2)
             else:
                 raise ValueError("Unsupported image format")
-            
+
             self.on_progress("Processing image...", 50)
-            
+
             # Perform traditional segmentation
             result = self.traditional_segmenter.segment_vessel(
                 segmentation_image,
                 user_points=self.user_points,
-                method="adaptive"  # Use adaptive method by default
+                method="adaptive",  # Use adaptive method by default
             )
-            
+
             self.on_progress("Finalizing results...", 90)
-            
+
             # Format result for compatibility
             formatted_result = {
-                'success': result['success'],
-                'mask': result['mask'],
-                'centerline_points': self._extract_centerline_points(result['centerline']),
-                'method': result['method'],
-                'frame_index': current_frame_idx
+                "success": result["success"],
+                "mask": result["mask"],
+                "centerline_points": self._extract_centerline_points(result["centerline"]),
+                "method": result["method"],
+                "frame_index": current_frame_idx,
             }
-            
+
             self.on_progress("Complete!", 100)
-            
+
             # Simulate thread completion
             QTimer.singleShot(100, lambda: self.on_segmentation_finished(formatted_result))
-            
+
         except Exception as e:
             self.on_segmentation_error(str(e))
             return
@@ -412,31 +429,34 @@ class SegmentationWidget(QWidget):
         """Extract centerline points from binary mask"""
         if centerline_mask is None:
             return []
-        
+
         # Find white pixels in centerline mask
         points = np.where(centerline_mask > 0)
         if len(points[0]) == 0:
             return []
-        
+
         # Convert to (x, y) format
         centerline_points = [(int(x), int(y)) for y, x in zip(points[0], points[1])]
-        
+
         # Sort points to create a connected path
         if len(centerline_points) > 1:
             # Simple ordering by distance (could be improved)
             ordered_points = [centerline_points[0]]
             remaining_points = centerline_points[1:]
-            
+
             while remaining_points:
                 current = ordered_points[-1]
                 # Find closest remaining point
-                distances = [((p[0] - current[0])**2 + (p[1] - current[1])**2)**0.5 for p in remaining_points]
+                distances = [
+                    ((p[0] - current[0]) ** 2 + (p[1] - current[1]) ** 2) ** 0.5
+                    for p in remaining_points
+                ]
                 min_idx = np.argmin(distances)
                 closest_point = remaining_points.pop(min_idx)
                 ordered_points.append(closest_point)
-            
+
             return ordered_points
-        
+
         return centerline_points
 
     @pyqtSlot(int, int, str)
@@ -445,19 +465,18 @@ class SegmentationWidget(QWidget):
         # Convert to percentage for UI
         percentage = int((current / total) * 100) if total > 0 else 0
         self.on_progress(message, percentage)
-        
+
     @pyqtSlot(int, dict)
     def _on_sequential_segmentation_completed(self, frame_idx: int, result: dict):
         """Handle segmentation completion from sequential processor"""
         # For single frame, this is our final result
         self.on_segmentation_finished(result)
-        
+
     @pyqtSlot(dict, dict)
     def _on_sequential_all_completed(self, seg_results: dict, qca_results: dict):
         """Handle all processing completion (for single frame, same as segmentation)"""
         # Already handled in segmentation_completed for single frame
-        pass
-        
+
     @pyqtSlot(int, str)
     def _on_sequential_error(self, frame_idx: int, error: str):
         """Handle error from sequential processor"""
@@ -477,7 +496,7 @@ class SegmentationWidget(QWidget):
         self.segment_button.setEnabled(True)
         self.clear_button.setEnabled(True)
 
-        if result.get('success'):
+        if result.get("success"):
             # Save previous result to history if exists
             if self.current_result:
                 self.segmentation_history.append(self.current_result)
@@ -498,11 +517,14 @@ class SegmentationWidget(QWidget):
 
             logger.info("Segmentation completed successfully")
         else:
-            error_msg = result.get('error', 'Segmentation failed')
-            if 'model not loaded' in error_msg.lower():
-                QMessageBox.warning(self, "Model Required",
+            error_msg = result.get("error", "Segmentation failed")
+            if "model not loaded" in error_msg.lower():
+                QMessageBox.warning(
+                    self,
+                    "Model Required",
                     "Traditional segmentation is now being used.\n"
-                    "The model will be downloaded automatically when you try again.")
+                    "The model will be downloaded automatically when you try again.",
+                )
             else:
                 QMessageBox.warning(self, "Failed", f"Segmentation failed: {error_msg}")
 
@@ -518,22 +540,12 @@ class SegmentationWidget(QWidget):
 
     def update_overlay_settings(self):
         """Update visualization settings (kept for compatibility)"""
-        settings = {
-            'enabled': True,
-            'opacity': 1.0,
-            'color': 'Red',
-            'contour_only': False
-        }
+        settings = {"enabled": True, "opacity": 1.0, "color": "Red", "contour_only": False}
         self.overlay_settings_changed.emit(settings)
 
     def get_overlay_settings(self) -> Dict:
         """Get visualization settings (kept for compatibility)"""
-        return {
-            'enabled': self.show_mask,
-            'opacity': 1.0,
-            'color': 'Red',
-            'contour_only': False
-        }
+        return {"enabled": self.show_mask, "opacity": 1.0, "color": "Red", "contour_only": False}
 
     def save_result(self):
         """Save segmentation result"""
@@ -545,42 +557,47 @@ class SegmentationWidget(QWidget):
             self,
             "Save Segmentation Result",
             "segmentation_result.npz",
-            "NumPy files (*.npz);;PNG Image (*.png);;All Files (*.*)"
+            "NumPy files (*.npz);;PNG Image (*.png);;All Files (*.*)",
         )
 
         if not file_path:
             return
 
         try:
-            if file_path.endswith('.npz'):
+            if file_path.endswith(".npz"):
                 # Save as numpy file with all data
-                np.savez_compressed(file_path,
-                                  mask=self.current_result.get('mask'),
-                                  centerline=self.current_result.get('centerline'),
-                                  qca_results=self.current_result.get('qca_results'),
-                                  metadata={
-                                      'timestamp': self.current_result.get('timestamp'),
-                                      'method': self.current_result.get('method', 'Traditional'),
-                                      'processing_time': self.current_result.get('processing_time', 0)
-                                  })
+                np.savez_compressed(
+                    file_path,
+                    mask=self.current_result.get("mask"),
+                    centerline=self.current_result.get("centerline"),
+                    qca_results=self.current_result.get("qca_results"),
+                    metadata={
+                        "timestamp": self.current_result.get("timestamp"),
+                        "method": self.current_result.get("method", "Traditional"),
+                        "processing_time": self.current_result.get("processing_time", 0),
+                    },
+                )
                 logger.info(f"Saved segmentation data to {file_path}")
-            elif file_path.endswith('.png'):
+            elif file_path.endswith(".png"):
                 # Save mask as image
-                mask = self.current_result.get('mask')
+                mask = self.current_result.get("mask")
                 if mask is not None:
                     # Convert boolean mask to uint8
                     mask_img = (mask * 255).astype(np.uint8)
                     import cv2
+
                     cv2.imwrite(file_path, mask_img)
                     logger.info(f"Saved segmentation mask to {file_path}")
             else:
                 # Default to numpy format
-                if not file_path.endswith('.npz'):
-                    file_path += '.npz'
-                np.savez_compressed(file_path,
-                                  mask=self.current_result.get('mask'),
-                                  centerline=self.current_result.get('centerline'),
-                                  qca_results=self.current_result.get('qca_results'))
+                if not file_path.endswith(".npz"):
+                    file_path += ".npz"
+                np.savez_compressed(
+                    file_path,
+                    mask=self.current_result.get("mask"),
+                    centerline=self.current_result.get("centerline"),
+                    qca_results=self.current_result.get("qca_results"),
+                )
                 logger.info(f"Saved segmentation data to {file_path}")
 
             QMessageBox.information(self, "Success", f"Segmentation result saved to:\n{file_path}")
@@ -599,7 +616,7 @@ class SegmentationWidget(QWidget):
         if self.current_result:
             # Update visualization
             settings = self.get_overlay_settings()
-            settings['enabled'] = self.show_mask
+            settings["enabled"] = self.show_mask
             self.overlay_settings_changed.emit(settings)
             # Re-emit the result to update display
             if self.show_mask:
@@ -611,7 +628,7 @@ class SegmentationWidget(QWidget):
         # Notify viewer to show/hide points
         main_window = self.main_window or self.window()
 
-        if main_window and hasattr(main_window, 'viewer_widget'):
+        if main_window and hasattr(main_window, "viewer_widget"):
             viewer = main_window.viewer_widget
             if self.show_points:
                 # Re-add points to viewer
@@ -634,14 +651,14 @@ class SegmentationWidget(QWidget):
         self.qca_button.setEnabled(False)
 
         # Clear from viewer
-        self.overlay_settings_changed.emit({'enabled': False})
+        self.overlay_settings_changed.emit({"enabled": False})
 
         # Notify viewer to restore original image
         main_window = self.main_window or self.window()
 
-        if main_window and hasattr(main_window, 'viewer_widget'):
+        if main_window and hasattr(main_window, "viewer_widget"):
             viewer = main_window.viewer_widget
-            if hasattr(viewer, 'clear_segmentation_graphics'):
+            if hasattr(viewer, "clear_segmentation_graphics"):
                 viewer.clear_segmentation_graphics()
 
     def clear_all_results(self):
@@ -651,16 +668,16 @@ class SegmentationWidget(QWidget):
         self.clear_mask_button.setEnabled(False)
         self.save_button.setEnabled(False)
         self.qca_button.setEnabled(False)
-        
+
         # Clear history
         self.segmentation_history.clear()
         self.undo_button.setEnabled(False)
-        
+
         # Clear overlay
-        self.overlay_settings_changed.emit({'enabled': False})
-        
+        self.overlay_settings_changed.emit({"enabled": False})
+
         # Notify viewer to update
-        if self.main_window and hasattr(self.main_window, 'viewer_widget'):
+        if self.main_window and hasattr(self.main_window, "viewer_widget"):
             self.main_window.viewer_widget._request_update()
 
     def undo_segmentation(self):
@@ -687,52 +704,53 @@ class SegmentationWidget(QWidget):
             self,
             "Load Segmentation Mask",
             "",
-            "NumPy files (*.npz *.npy);;Image files (*.png *.jpg *.bmp);;All Files (*.*)"
+            "NumPy files (*.npz *.npy);;Image files (*.png *.jpg *.bmp);;All Files (*.*)",
         )
 
         if not file_path:
             return
 
         try:
-            if file_path.endswith('.npz'):
+            if file_path.endswith(".npz"):
                 # Load numpy archive
                 data = np.load(file_path, allow_pickle=True)
-                mask = data.get('mask')
-                centerline = data.get('centerline', None)
-                qca_results = data.get('qca_results', None)
+                mask = data.get("mask")
+                centerline = data.get("centerline", None)
+                qca_results = data.get("qca_results", None)
                 if isinstance(qca_results, np.ndarray) and qca_results.shape == ():
                     qca_results = qca_results.item()
-                metadata = data.get('metadata', {})
+                metadata = data.get("metadata", {})
                 if isinstance(metadata, np.ndarray) and metadata.shape == ():
                     metadata = metadata.item()
 
                 # Create result dictionary
                 self.current_result = {
-                    'success': True,
-                    'mask': mask,
-                    'centerline': centerline,
-                    'qca_results': qca_results,
-                    'timestamp': metadata.get('timestamp', datetime.now().isoformat()),
-                    'method': metadata.get('method', 'Loaded'),
-                    'processing_time': metadata.get('processing_time', 0)
+                    "success": True,
+                    "mask": mask,
+                    "centerline": centerline,
+                    "qca_results": qca_results,
+                    "timestamp": metadata.get("timestamp", datetime.now().isoformat()),
+                    "method": metadata.get("method", "Loaded"),
+                    "processing_time": metadata.get("processing_time", 0),
                 }
 
-            elif file_path.endswith('.npy'):
+            elif file_path.endswith(".npy"):
                 # Load single numpy array as mask
                 mask = np.load(file_path)
                 self.current_result = {
-                    'success': True,
-                    'mask': mask,
-                    'centerline': None,
-                    'qca_results': None,
-                    'timestamp': datetime.now().isoformat(),
-                    'method': 'Loaded',
-                    'processing_time': 0
+                    "success": True,
+                    "mask": mask,
+                    "centerline": None,
+                    "qca_results": None,
+                    "timestamp": datetime.now().isoformat(),
+                    "method": "Loaded",
+                    "processing_time": 0,
                 }
 
             else:
                 # Load image file as mask
                 import cv2
+
                 img = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
                 if img is None:
                     raise ValueError("Failed to load image file")
@@ -741,13 +759,13 @@ class SegmentationWidget(QWidget):
                 mask = img > 127
 
                 self.current_result = {
-                    'success': True,
-                    'mask': mask,
-                    'centerline': None,
-                    'qca_results': None,
-                    'timestamp': datetime.now().isoformat(),
-                    'method': 'Loaded from image',
-                    'processing_time': 0
+                    "success": True,
+                    "mask": mask,
+                    "centerline": None,
+                    "qca_results": None,
+                    "timestamp": datetime.now().isoformat(),
+                    "method": "Loaded from image",
+                    "processing_time": 0,
                 }
 
             # Update UI
@@ -761,7 +779,9 @@ class SegmentationWidget(QWidget):
             self.update_status(f"Loaded mask from: {Path(file_path).name}")
             logger.info(f"Successfully loaded segmentation mask from {file_path}")
 
-            QMessageBox.information(self, "Success", f"Segmentation mask loaded successfully from:\n{file_path}")
+            QMessageBox.information(
+                self, "Success", f"Segmentation mask loaded successfully from:\n{file_path}"
+            )
 
         except Exception as e:
             logger.error(f"Failed to load segmentation mask: {e}")
@@ -774,26 +794,27 @@ class SegmentationWidget(QWidget):
 
     def perform_qca_analysis(self):
         """Perform QCA analysis using segmentation results"""
-        if not self.current_result or not self.current_result.get('success'):
-            QMessageBox.warning(self, "No Segmentation",
-                              "Please perform vessel segmentation first")
+        if not self.current_result or not self.current_result.get("success"):
+            QMessageBox.warning(self, "No Segmentation", "Please perform vessel segmentation first")
             return
 
         # Check if we have reference points (the user points used for segmentation)
-        if hasattr(self, 'user_points') and len(self.user_points) >= 1:
+        if hasattr(self, "user_points") and len(self.user_points) >= 1:
             # Add reference points to the result
             if len(self.user_points) >= 2:
-                self.current_result['reference_points'] = {
-                    'proximal': self.user_points[0],   # First point is proximal
-                    'distal': self.user_points[-1]      # Last point is distal
+                self.current_result["reference_points"] = {
+                    "proximal": self.user_points[0],  # First point is proximal
+                    "distal": self.user_points[-1],  # Last point is distal
                 }
             else:
                 # Single point - use same point for both proximal and distal
-                self.current_result['reference_points'] = {
-                    'proximal': self.user_points[0],
-                    'distal': self.user_points[0]
+                self.current_result["reference_points"] = {
+                    "proximal": self.user_points[0],
+                    "distal": self.user_points[0],
                 }
-            logger.info(f"QCA will be limited to region between {self.user_points[0]} and {self.user_points[-1]}")
+            logger.info(
+                f"QCA will be limited to region between {self.user_points[0]} and {self.user_points[-1]}"
+            )
         else:
             logger.info("No reference points available, QCA will analyze entire vessel")
 
@@ -802,22 +823,23 @@ class SegmentationWidget(QWidget):
         self.qca_analysis_requested.emit(self.current_result)
 
         # Show message
-        QMessageBox.information(self, "QCA Analysis",
-                              "QCA analysis started. Check the QCA panel for results.")
+        QMessageBox.information(
+            self, "QCA Analysis", "QCA analysis started. Check the QCA panel for results."
+        )
 
     def _check_and_import_tracking_points(self):
         """Check for tracking points in current frame and import them"""
-        if not self.main_window or not hasattr(self.main_window, 'viewer_widget'):
+        if not self.main_window or not hasattr(self.main_window, "viewer_widget"):
             return
 
         viewer = self.main_window.viewer_widget
 
         # Check if viewer has overlay_item with frame_points
-        if not hasattr(viewer, 'overlay_item') or not hasattr(viewer.overlay_item, 'frame_points'):
+        if not hasattr(viewer, "overlay_item") or not hasattr(viewer.overlay_item, "frame_points"):
             return
 
         # Get current frame index
-        current_frame = viewer.current_frame_index if hasattr(viewer, 'current_frame_index') else 0
+        current_frame = viewer.current_frame_index if hasattr(viewer, "current_frame_index") else 0
 
         # Get tracking points for current frame
         tracking_points = viewer.overlay_item.frame_points.get(current_frame, [])
@@ -837,7 +859,7 @@ class SegmentationWidget(QWidget):
             self.segment_button.setEnabled(True)
 
             # Also update viewer to show these points as segmentation points
-            if hasattr(viewer, 'set_segmentation_points'):
+            if hasattr(viewer, "set_segmentation_points"):
                 viewer.set_segmentation_points(self.user_points)
 
             logger.info(f"Imported {len(self.user_points)} tracking points for segmentation")
@@ -852,9 +874,9 @@ class SegmentationWidget(QWidget):
         self.point_count_label.setText("Points: 0")
 
         # Clear viewer's segmentation display
-        if self.main_window and hasattr(self.main_window, 'viewer_widget'):
+        if self.main_window and hasattr(self.main_window, "viewer_widget"):
             viewer = self.main_window.viewer_widget
-            if hasattr(viewer, 'clear_segmentation_points'):
+            if hasattr(viewer, "clear_segmentation_points"):
                 viewer.clear_segmentation_points()
 
         # Check for tracking points in new frame
@@ -866,7 +888,7 @@ class SegmentationWidget(QWidget):
 
     def update_frame_status(self, frame_index: int = None):
         """Update the frame point status display"""
-        if not self.main_window or not hasattr(self.main_window, 'viewer_widget'):
+        if not self.main_window or not hasattr(self.main_window, "viewer_widget"):
             self.frame_status_label.setText("Frame status: No viewer available")
             return
 
@@ -874,12 +896,13 @@ class SegmentationWidget(QWidget):
 
         # Get current frame index if not provided
         if frame_index is None:
-            frame_index = viewer.current_frame_index if hasattr(viewer, 'current_frame_index') else 0
-
+            frame_index = (
+                viewer.current_frame_index if hasattr(viewer, "current_frame_index") else 0
+            )
 
         # Check for tracking points
         tracking_points = []
-        if hasattr(viewer, 'overlay_item') and hasattr(viewer.overlay_item, 'frame_points'):
+        if hasattr(viewer, "overlay_item") and hasattr(viewer.overlay_item, "frame_points"):
             all_frame_points = viewer.overlay_item.frame_points
             tracking_points = all_frame_points.get(frame_index, [])
 
@@ -912,7 +935,9 @@ class SegmentationWidget(QWidget):
         # Update label
         status_text = " | ".join(status_parts)
         self.frame_status_label.setText(f"Status: {status_text}")
-        self.frame_status_label.setStyleSheet(f"font-size: 11px; color: {color}; background-color: #f0f0f0; padding: 5px; border-radius: 3px; font-weight: bold;")
+        self.frame_status_label.setStyleSheet(
+            f"font-size: 11px; color: {color}; background-color: #f0f0f0; padding: 5px; border-radius: 3px; font-weight: bold;"
+        )
 
         # Update segmentation button state based on available points
         if self.segmentation_mode:

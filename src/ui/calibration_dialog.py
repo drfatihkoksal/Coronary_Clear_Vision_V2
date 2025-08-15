@@ -3,10 +3,19 @@ Calibration Dialog for catheter-based calibration
 Allows selecting catheter size and provides calibration instructions
 """
 
-from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-                            QComboBox, QPushButton, QGroupBox, QDialogButtonBox)
+from PyQt6.QtWidgets import (
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QComboBox,
+    QPushButton,
+    QGroupBox,
+    QDialogButtonBox,
+)
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QPixmap, QPainter, QColor, QFont
+
 
 class CalibrationDialog(QDialog):
     """Dialog for catheter calibration settings"""
@@ -60,7 +69,7 @@ class CalibrationDialog(QDialog):
             ("5F", "5 French (1.67 mm)"),
             ("6F", "6 French (2.00 mm)"),
             ("7F", "7 French (2.33 mm)"),
-            ("8F", "8 French (2.67 mm)")
+            ("8F", "8 French (2.67 mm)"),
         ]
 
         for size_code, size_description in catheter_sizes:

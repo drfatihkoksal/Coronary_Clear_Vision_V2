@@ -11,6 +11,7 @@ import urllib.request
 
 logger = logging.getLogger(__name__)
 
+
 class ModelDownloader:
     """Handle downloading and caching of AngioPy model weights"""
 
@@ -32,7 +33,9 @@ class ModelDownloader:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.model_path = self.cache_dir / self.MODEL_FILENAME
 
-    def download_model(self, progress_callback: Optional[Callable[[int, int], None]] = None) -> Optional[str]:
+    def download_model(
+        self, progress_callback: Optional[Callable[[int, int], None]] = None
+    ) -> Optional[str]:
         """
         Download model weights if not cached
 
@@ -65,7 +68,7 @@ class ModelDownloader:
                     known_hash=self.MODEL_HASH,
                     fname=self.MODEL_FILENAME,
                     path=self.cache_dir,
-                    progressbar=True
+                    progressbar=True,
                 )
 
                 logger.info(f"✓ Model downloaded successfully to: {file_path}")
@@ -86,7 +89,9 @@ class ModelDownloader:
             logger.error(f"Failed to download model: {e}")
             return None
 
-    def _download_with_urllib(self, progress_callback: Optional[Callable[[int, int], None]] = None) -> Optional[str]:
+    def _download_with_urllib(
+        self, progress_callback: Optional[Callable[[int, int], None]] = None
+    ) -> Optional[str]:
         """Fallback download method using urllib"""
         try:
 
@@ -101,9 +106,7 @@ class ModelDownloader:
                     progress_callback(block_num * block_size, total_size)
 
             urllib.request.urlretrieve(
-                direct_url,
-                str(self.model_path),
-                reporthook=download_progress
+                direct_url, str(self.model_path), reporthook=download_progress
             )
 
             if self._verify_hash():

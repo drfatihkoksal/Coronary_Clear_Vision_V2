@@ -4,8 +4,15 @@ Implements common patterns for threading, progress tracking, and error handling.
 """
 
 from typing import Optional, Type, Dict, Any
-from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-                             QLabel, QProgressBar, QGroupBox)
+from PyQt6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QLabel,
+    QProgressBar,
+    QGroupBox,
+)
 from PyQt6.QtCore import pyqtSignal, QThread
 from ..core.threading import BaseThread
 
@@ -127,11 +134,12 @@ class BaseAnalysisWidget(QWidget):
     def show_error(self, message: str):
         """Show error message to user."""
         from PyQt6.QtWidgets import QMessageBox
+
         QMessageBox.critical(self, "Analysis Error", message)
 
     def get_current_frame(self):
         """Get current frame from main window viewer."""
-        if self.main_window and hasattr(self.main_window, 'viewer_widget'):
+        if self.main_window and hasattr(self.main_window, "viewer_widget"):
             return self.main_window.viewer_widget.get_current_frame()
         return None
 
@@ -143,6 +151,6 @@ class BaseAnalysisWidget(QWidget):
 
     def update_viewer_overlay(self, overlay_data: Any):
         """Update viewer widget overlay."""
-        if self.main_window and hasattr(self.main_window, 'viewer_widget'):
+        if self.main_window and hasattr(self.main_window, "viewer_widget"):
             # To be implemented based on specific overlay needs
             pass

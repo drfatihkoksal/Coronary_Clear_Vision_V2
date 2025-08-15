@@ -11,6 +11,7 @@ from enum import Enum
 
 class RiskLevel(Enum):
     """Risk level classification for RWS values"""
+
     LOW = "LOW"
     MODERATE = "MODERATE"
     HIGH = "HIGH"
@@ -20,6 +21,7 @@ class RiskLevel(Enum):
 @dataclass
 class RWSAnalysisProgress:
     """Progress information for RWS analysis"""
+
     status: str
     current_step: int
     total_steps: int
@@ -30,6 +32,7 @@ class RWSAnalysisProgress:
 @dataclass
 class RWSAnalysisRequest:
     """Request parameters for RWS analysis"""
+
     vessel_name: str
     frames: List[int]
     calibration_factor: float
@@ -39,10 +42,11 @@ class RWSAnalysisRequest:
 @dataclass
 class MLDInfo:
     """Information about MLD at a specific frame"""
+
     frame_index: int
     mld_value: float
     mld_index: Optional[int] = None
-    
+
     @property
     def frame_number(self) -> int:
         """Get 1-based frame number for UI display"""
@@ -52,6 +56,7 @@ class MLDInfo:
 @dataclass
 class RWSResult:
     """Multi-phase RWS calculation result"""
+
     rws_percentage: float
     min_mld: float
     max_mld: float
@@ -61,23 +66,23 @@ class RWSResult:
     max_mld_index: Optional[int] = None
     min_phase: Optional[str] = None  # Phase name where min MLD occurs
     max_phase: Optional[str] = None  # Phase name where max MLD occurs
-    
+
     @property
     def mld_variation(self) -> float:
         """Absolute MLD variation between phases"""
         return self.max_mld - self.min_mld
-    
+
     @property
     def is_vulnerable(self) -> bool:
         """Check if RWS indicates vulnerable plaque (>12%)"""
         return self.rws_percentage > 12.0
-    
+
     def get_clinical_interpretation(self) -> str:
         """Get clinical interpretation of RWS result"""
         if self.is_vulnerable:
             return f"HIGH RWS ({self.rws_percentage}%): Indicates potential plaque vulnerability"
         return f"NORMAL RWS ({self.rws_percentage}%): Indicates stable plaque characteristics"
-    
+
     def get_phase_summary(self) -> str:
         """Get phase-based summary"""
         if self.min_phase and self.max_phase:
@@ -88,6 +93,7 @@ class RWSResult:
 @dataclass
 class PatientInfo:
     """Patient information for reports"""
+
     patient_id: str
     patient_name: str
     study_date: str
@@ -98,6 +104,7 @@ class PatientInfo:
 @dataclass
 class RWSAnalysisResult:
     """RWS analysis result with risk assessment"""
+
     success: bool
     timestamp: datetime
     rws_max: float = 0.0
@@ -115,6 +122,7 @@ class RWSAnalysisResult:
 @dataclass
 class RWSAnalysisData:
     """Complete RWS analysis data"""
+
     success: bool
     timestamp: datetime
     beat_frames: List[int]
@@ -125,39 +133,37 @@ class RWSAnalysisData:
     diameter_profiles: Dict[int, np.ndarray] = None
     patient_info: Optional[PatientInfo] = None
     error: Optional[str] = None
-    
+
     def to_dict(self) -> Dict:
         """Convert to dictionary for compatibility"""
         if not self.success:
-            return {
-                'success': False,
-                'error': self.error
-            }
-        
+            return {"success": False, "error": self.error}
+
         return {
-            'success': True,
-            'timestamp': self.timestamp.isoformat(),
-            'beat_frames': self.beat_frames,
-            'num_frames_analyzed': self.num_frames_analyzed,
-            'calibration_factor': self.calibration_factor,
-            'rws_at_mld': self.rws_result.rws_percentage,
-            'mld_min_value': self.rws_result.min_mld,
-            'mld_max_value': self.rws_result.max_mld,
-            'mld_min_frame': self.rws_result.min_mld_frame,
-            'mld_max_frame': self.rws_result.max_mld_frame,
-            'mld_min_index': self.rws_result.min_mld_index,
-            'mld_max_index': self.rws_result.max_mld_index,
-            'mld_values_by_frame': {
-                frame: {
-                    'mld_value': info.mld_value,
-                    'mld_index': info.mld_index
-                }
+            "success": True,
+            "timestamp": self.timestamp.isoformat(),
+            "beat_frames": self.beat_frames,
+            "num_frames_analyzed": self.num_frames_analyzed,
+            "calibration_factor": self.calibration_factor,
+            "rws_at_mld": self.rws_result.rws_percentage,
+            "mld_min_value": self.rws_result.min_mld,
+            "mld_max_value": self.rws_result.max_mld,
+            "mld_min_frame": self.rws_result.min_mld_frame,
+            "mld_max_frame": self.rws_result.max_mld_frame,
+            "mld_min_index": self.rws_result.min_mld_index,
+            "mld_max_index": self.rws_result.max_mld_index,
+            "mld_values_by_frame": {
+                frame: {"mld_value": info.mld_value, "mld_index": info.mld_index}
                 for frame, info in self.mld_info_by_frame.items()
             },
-            'diameter_profiles': self.diameter_profiles,
-            'patient_info': {
-                'id': self.patient_info.patient_id,
-                'name': self.patient_info.patient_name,
-                'study_date': self.patient_info.study_date
-            } if self.patient_info else None
+            "diameter_profiles": self.diameter_profiles,
+            "patient_info": (
+                {
+                    "id": self.patient_info.patient_id,
+                    "name": self.patient_info.patient_name,
+                    "study_date": self.patient_info.study_date,
+                }
+                if self.patient_info
+                else None
+            ),
         }

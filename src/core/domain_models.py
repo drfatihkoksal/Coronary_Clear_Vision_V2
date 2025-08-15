@@ -9,6 +9,7 @@ from datetime import datetime
 @dataclass
 class Point:
     """Represents a 2D point in image coordinates."""
+
     x: float
     y: float
 
@@ -33,14 +34,15 @@ class Point:
         """Convert to integer tuple."""
         return (int(self.x), int(self.y))
 
-    def distance_to(self, other: 'Point') -> float:
+    def distance_to(self, other: "Point") -> float:
         """Calculate Euclidean distance to another point."""
-        return np.sqrt((self.x - other.x)**2 + (self.y - other.y)**2)
+        return np.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2)
 
 
 @dataclass
 class CalibrationResult:
     """Result of a calibration operation."""
+
     pixels_per_mm: float
     method: str  # 'catheter', 'angiopy', 'manual'
     reference_points: List[Point] = field(default_factory=list)
@@ -51,18 +53,19 @@ class CalibrationResult:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
-            'pixels_per_mm': self.pixels_per_mm,
-            'method': self.method,
-            'reference_points': [(p.x, p.y) for p in self.reference_points],
-            'reference_diameter_mm': self.reference_diameter_mm,
-            'confidence': self.confidence,
-            'timestamp': self.timestamp.isoformat()
+            "pixels_per_mm": self.pixels_per_mm,
+            "method": self.method,
+            "reference_points": [(p.x, p.y) for p in self.reference_points],
+            "reference_diameter_mm": self.reference_diameter_mm,
+            "confidence": self.confidence,
+            "timestamp": self.timestamp.isoformat(),
         }
 
 
 @dataclass
 class VesselSegment:
     """Represents a segment of a vessel."""
+
     centerline: List[Point]
     diameters: List[float]  # Diameter at each centerline point in mm
     start_point: Point
@@ -90,6 +93,7 @@ class VesselSegment:
 @dataclass
 class StenosisResult:
     """Result of stenosis analysis."""
+
     location: Point
     percent_stenosis: float
     minimal_luminal_diameter: float  # MLD in mm
@@ -101,13 +105,13 @@ class StenosisResult:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
-            'location': (self.location.x, self.location.y),
-            'percent_stenosis': self.percent_stenosis,
-            'minimal_luminal_diameter': self.minimal_luminal_diameter,
-            'reference_diameter': self.reference_diameter,
-            'lesion_length': self.lesion_length,
-            'confidence': self.confidence,
-            'method': self.method
+            "location": (self.location.x, self.location.y),
+            "percent_stenosis": self.percent_stenosis,
+            "minimal_luminal_diameter": self.minimal_luminal_diameter,
+            "reference_diameter": self.reference_diameter,
+            "lesion_length": self.lesion_length,
+            "confidence": self.confidence,
+            "method": self.method,
         }
 
     @property
@@ -128,6 +132,7 @@ class StenosisResult:
 @dataclass
 class VesselAnalysisResult:
     """Complete result of vessel analysis."""
+
     vessel_segment: VesselSegment
     stenoses: List[StenosisResult]
     calibration: CalibrationResult
@@ -145,28 +150,29 @@ class VesselAnalysisResult:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
-            'vessel_segment': {
-                'centerline': [(p.x, p.y) for p in self.vessel_segment.centerline],
-                'diameters': self.vessel_segment.diameters,
-                'average_diameter': self.vessel_segment.average_diameter,
-                'min_diameter': self.vessel_segment.min_diameter,
-                'max_diameter': self.vessel_segment.max_diameter,
-                'length_mm': self.vessel_segment.length_mm
+            "vessel_segment": {
+                "centerline": [(p.x, p.y) for p in self.vessel_segment.centerline],
+                "diameters": self.vessel_segment.diameters,
+                "average_diameter": self.vessel_segment.average_diameter,
+                "min_diameter": self.vessel_segment.min_diameter,
+                "max_diameter": self.vessel_segment.max_diameter,
+                "length_mm": self.vessel_segment.length_mm,
             },
-            'stenoses': [s.to_dict() for s in self.stenoses],
-            'calibration': self.calibration.to_dict(),
-            'frame_number': self.frame_number,
-            'analysis_timestamp': self.analysis_timestamp.isoformat(),
-            'metadata': self.metadata
+            "stenoses": [s.to_dict() for s in self.stenoses],
+            "calibration": self.calibration.to_dict(),
+            "frame_number": self.frame_number,
+            "analysis_timestamp": self.analysis_timestamp.isoformat(),
+            "metadata": self.metadata,
         }
 
 
 @dataclass
 class SegmentationResult:
     """Result of vessel segmentation."""
+
     mask: np.ndarray
     confidence_map: Optional[np.ndarray] = None
-    method: str = 'angiopy'  # 'angiopy', 'manual', 'threshold'
+    method: str = "angiopy"  # 'angiopy', 'manual', 'threshold'
     processing_time: float = 0.0
     metadata: Dict[str, Any] = field(default_factory=dict)
 
@@ -178,12 +184,14 @@ class SegmentationResult:
     def get_skeleton(self) -> np.ndarray:
         """Get vessel skeleton (requires skeletonization)."""
         from skimage.morphology import skeletonize
+
         return skeletonize(self.mask > 0)
 
 
 @dataclass
 class TrackedPoint:
     """A point tracked across multiple frames."""
+
     point_id: str
     current_position: Point
     frame_history: Dict[int, Point] = field(default_factory=dict)

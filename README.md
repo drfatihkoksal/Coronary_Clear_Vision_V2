@@ -55,10 +55,23 @@ pip install -r requirements.txt
 ```
 
 ## Kullanım
+
+### Temel Başlatma
 ```bash
 # Uygulamayı başlat
 python main.py
+
+# DICOM dosyası ile başlat
+python main.py /path/to/dicom.dcm
+
+# DICOM klasörü ile başlat
+python main.py /path/to/dicom/folder/ --folder
 ```
+
+### Hızlı Erişim Kısayolları
+- **Ctrl+O**: DICOM dosyası aç
+- **Ctrl+Shift+O**: DICOM klasörü aç
+- **Ctrl+D**: Varsayılan DICOM klasörü aç
 
 ## Proje Yapısı
 ```

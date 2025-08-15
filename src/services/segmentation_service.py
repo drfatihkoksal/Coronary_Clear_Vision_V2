@@ -17,11 +17,13 @@ class SegmentationService:
     def __init__(self):
         self.model_manager = ModelManager.instance()
 
-    def segment_vessel(self,
-                      image: np.ndarray,
-                      user_points: List[Tuple[int, int]],
-                      output_threshold: float = 0.5,
-                      use_curvature_resistant_centerline: bool = False) -> Dict:
+    def segment_vessel(
+        self,
+        image: np.ndarray,
+        user_points: List[Tuple[int, int]],
+        output_threshold: float = 0.5,
+        use_curvature_resistant_centerline: bool = False,
+    ) -> Dict:
         """
         Perform vessel segmentation.
 
@@ -37,10 +39,10 @@ class SegmentationService:
         try:
             # Get segmentation model
             segmentation_model = self.model_manager.get_segmentation_model()
-            
+
             if segmentation_model is None:
                 raise ValueError("Segmentation model not loaded")
-            
+
             logger.debug(f"Using segmentation model: {type(segmentation_model).__name__}")
             logger.debug(f"Input image shape: {image.shape}, dtype: {image.dtype}")
             logger.debug(f"User points: {user_points}")
@@ -50,18 +52,18 @@ class SegmentationService:
                 image,
                 user_points,
                 use_curvature_resistant_centerline=use_curvature_resistant_centerline,
-                use_light_mask_limiting=False  # Always False - use moderate/tight limiting
+                use_light_mask_limiting=False,  # Always False - use moderate/tight limiting
             )
-            
+
             # Check if segmentation was successful
-            if not segmentation_result.get('success', False):
-                error_msg = segmentation_result.get('error', 'Unknown segmentation error')
+            if not segmentation_result.get("success", False):
+                error_msg = segmentation_result.get("error", "Unknown segmentation error")
                 raise ValueError(f"Vessel segmentation failed: {error_msg}")
-            
+
             # Extract mask and confidence from result
-            vessel_mask = segmentation_result.get('mask')
-            confidence = segmentation_result.get('confidence', 0.0)
-            
+            vessel_mask = segmentation_result.get("mask")
+            confidence = segmentation_result.get("confidence", 0.0)
+
             if vessel_mask is None:
                 raise ValueError("Segmentation returned no mask")
 
@@ -69,38 +71,35 @@ class SegmentationService:
             vessel_properties = self._analyze_vessel(vessel_mask)
 
             # Get centerline from segmentation result if available
-            centerline = segmentation_result.get('centerline')
-            
+            centerline = segmentation_result.get("centerline")
+
             # NO CENTERLINE EXTRACTION - QCA will use tracked points
             if centerline is None:
                 logger.info("No centerline from AngioPy - QCA will use tracked points instead")
                 # Leave centerline as None
-            
+
             # Get proximal and distal points from segmentation
-            proximal_point = segmentation_result.get('proximal_point')
-            distal_point = segmentation_result.get('distal_point')
+            proximal_point = segmentation_result.get("proximal_point")
+            distal_point = segmentation_result.get("distal_point")
 
             return {
-                'success': True,
-                'mask': vessel_mask,  # Also include as 'mask' for compatibility
-                'vessel_mask': vessel_mask,
-                'confidence': confidence,
-                'centerline': centerline,
-                'properties': vessel_properties,
-                'proximal_point': proximal_point,
-                'distal_point': distal_point
+                "success": True,
+                "mask": vessel_mask,  # Also include as 'mask' for compatibility
+                "vessel_mask": vessel_mask,
+                "confidence": confidence,
+                "centerline": centerline,
+                "properties": vessel_properties,
+                "proximal_point": proximal_point,
+                "distal_point": distal_point,
             }
 
         except Exception as e:
             import traceback
+
             error_details = traceback.format_exc()
             logger.error(f"Segmentation error: {e}")
             logger.debug(f"Full traceback: {error_details}")
-            return {
-                'success': False,
-                'error': str(e),
-                'details': error_details
-            }
+            return {"success": False, "error": str(e), "details": error_details}
 
     def _analyze_vessel(self, mask: np.ndarray) -> Dict:
         """
@@ -114,9 +113,7 @@ class SegmentationService:
         """
         # Find contours
         contours, _ = cv2.findContours(
-            mask.astype(np.uint8),
-            cv2.RETR_EXTERNAL,
-            cv2.CHAIN_APPROX_SIMPLE
+            mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
         )
 
         if not contours:
@@ -138,12 +135,12 @@ class SegmentationService:
             width = height = angle = 0
 
         return {
-            'area': area,
-            'perimeter': perimeter,
-            'center': center,
-            'width': width,
-            'height': height,
-            'orientation': angle
+            "area": area,
+            "perimeter": perimeter,
+            "center": center,
+            "width": width,
+            "height": height,
+            "orientation": angle,
         }
 
     def _extract_centerline(self, mask: np.ndarray) -> np.ndarray:
@@ -158,20 +155,23 @@ class SegmentationService:
         """
         # Use distance transform to find vessel center
         dist = cv2.distanceTransform(mask.astype(np.uint8), cv2.DIST_L2, 5)
-        
+
         # Threshold to get ridge (vessel center)
         # Use a higher threshold to stay in the center
         threshold = dist.max() * 0.1  # Very low threshold for maximum centerline coverage
         ridge_mask = (dist > threshold).astype(np.uint8)
-        
+
         # Apply skeletonization to thin the ridge
         from skimage.morphology import skeletonize
+
         skeleton = skeletonize(ridge_mask > 0)
-        
+
         # Extract centerline points
         centerline_points = np.column_stack(np.where(skeleton))
-        
-        logger.info(f"Distance transform centerline extraction found {len(centerline_points)} points")
+
+        logger.info(
+            f"Distance transform centerline extraction found {len(centerline_points)} points"
+        )
 
         # Sort points to form a path
         if len(centerline_points) > 0:
@@ -206,10 +206,9 @@ class SegmentationService:
 
         return np.array(ordered)
 
-    def calculate_vessel_diameter(self,
-                                 mask: np.ndarray,
-                                 centerline: np.ndarray,
-                                 point_index: int) -> float:
+    def calculate_vessel_diameter(
+        self, mask: np.ndarray, centerline: np.ndarray, point_index: int
+    ) -> float:
         """
         Calculate vessel diameter at a specific centerline point.
 
@@ -254,14 +253,18 @@ class SegmentationService:
             neg_point = point - dist * normal
 
             # Check if points are within image bounds
-            if (0 <= pos_point[0] < mask.shape[0] and
-                0 <= pos_point[1] < mask.shape[1] and
-                0 <= neg_point[0] < mask.shape[0] and
-                0 <= neg_point[1] < mask.shape[1]):
+            if (
+                0 <= pos_point[0] < mask.shape[0]
+                and 0 <= pos_point[1] < mask.shape[1]
+                and 0 <= neg_point[0] < mask.shape[0]
+                and 0 <= neg_point[1] < mask.shape[1]
+            ):
 
                 # Check if we've hit the vessel boundary
-                if mask[int(pos_point[0]), int(pos_point[1])] and \
-                   mask[int(neg_point[0]), int(neg_point[1])]:
+                if (
+                    mask[int(pos_point[0]), int(pos_point[1])]
+                    and mask[int(neg_point[0]), int(neg_point[1])]
+                ):
                     diameter = 2 * dist
                 else:
                     break

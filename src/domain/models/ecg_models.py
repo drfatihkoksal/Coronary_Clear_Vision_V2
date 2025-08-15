@@ -7,7 +7,7 @@ Tüm modeller immutable (frozen=True) olarak tanımlanmıştır.
 """
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional, Dict, Any
 from enum import Enum
 import numpy as np
 from datetime import datetime

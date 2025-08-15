@@ -8,6 +8,7 @@ from scipy import signal as scipy_signal
 from scipy.ndimage import uniform_filter1d
 from typing import Tuple, Dict
 
+
 class SimpleRPeakDetector:
     """Simple and reliable R-peak detector"""
 
@@ -31,7 +32,7 @@ class SimpleRPeakDetector:
         derivative = np.gradient(filtered)
 
         # 3. Square to make all values positive
-        squared = derivative ** 2
+        squared = derivative**2
 
         # 4. Moving window integration
         window_size = int(0.15 * self.fs)  # 150ms window
@@ -55,7 +56,7 @@ class SimpleRPeakDetector:
         high = min(15 / nyquist, 0.99)
 
         if low < high:
-            sos = scipy_signal.butter(2, [low, high], btype='band', output='sos')
+            sos = scipy_signal.butter(2, [low, high], btype="band", output="sos")
             return scipy_signal.sosfiltfilt(sos, signal)
         return signal
 
@@ -66,18 +67,14 @@ class SimpleRPeakDetector:
         min_distance = int(0.3 * self.fs)  # 300ms minimum between peaks
 
         peaks, properties = scipy_signal.find_peaks(
-            integrated,
-            height=threshold,
-            distance=min_distance
+            integrated, height=threshold, distance=min_distance
         )
 
         # If too few peaks, lower threshold
         if len(peaks) < 5:
             threshold = 0.4 * np.max(integrated)
             peaks, properties = scipy_signal.find_peaks(
-                integrated,
-                height=threshold,
-                distance=min_distance
+                integrated, height=threshold, distance=min_distance
             )
 
         # Refine peak locations to actual R-peak in original signal
@@ -138,9 +135,9 @@ class SimpleRPeakDetector:
         metrics = {}
 
         if len(r_peaks) < 2:
-            metrics['heart_rate'] = 0
-            metrics['num_peaks'] = len(r_peaks)
-            metrics['quality'] = 'poor'
+            metrics["heart_rate"] = 0
+            metrics["num_peaks"] = len(r_peaks)
+            metrics["quality"] = "poor"
             return metrics
 
         # RR intervals in milliseconds
@@ -148,22 +145,22 @@ class SimpleRPeakDetector:
 
         # Heart rate
         mean_rr = np.mean(rr_intervals)
-        metrics['heart_rate'] = 60000 / mean_rr if mean_rr > 0 else 0
-        metrics['num_peaks'] = len(r_peaks)
+        metrics["heart_rate"] = 60000 / mean_rr if mean_rr > 0 else 0
+        metrics["num_peaks"] = len(r_peaks)
 
         # RR variability (for quality assessment)
         rr_std = np.std(rr_intervals)
         rr_cv = rr_std / mean_rr if mean_rr > 0 else 1.0
 
         # Quality assessment
-        if 40 <= metrics['heart_rate'] <= 200 and rr_cv < 0.3:
-            metrics['quality'] = 'good'
-        elif 30 <= metrics['heart_rate'] <= 220 and rr_cv < 0.5:
-            metrics['quality'] = 'fair'
+        if 40 <= metrics["heart_rate"] <= 200 and rr_cv < 0.3:
+            metrics["quality"] = "good"
+        elif 30 <= metrics["heart_rate"] <= 220 and rr_cv < 0.5:
+            metrics["quality"] = "fair"
         else:
-            metrics['quality'] = 'poor'
+            metrics["quality"] = "poor"
 
-        metrics['rr_mean_ms'] = mean_rr
-        metrics['rr_std_ms'] = rr_std
+        metrics["rr_mean_ms"] = mean_rr
+        metrics["rr_std_ms"] = rr_std
 
         return metrics

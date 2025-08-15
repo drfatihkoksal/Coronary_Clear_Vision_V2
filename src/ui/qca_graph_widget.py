@@ -36,15 +36,15 @@ class QCAGraphWidget(QWidget):
     def set_data(self, profile_data: Dict, stenosis_results: Dict):
         """Set graph data from QCA analysis results"""
         if profile_data:
-            self.distances = np.array(profile_data.get('distances', []))
-            self.diameter_data = np.array(profile_data.get('diameters', []))
-            self.area_data = np.array(profile_data.get('areas', []))
-            self.unit = profile_data.get('unit', 'mm')
+            self.distances = np.array(profile_data.get("distances", []))
+            self.diameter_data = np.array(profile_data.get("diameters", []))
+            self.area_data = np.array(profile_data.get("areas", []))
+            self.unit = profile_data.get("unit", "mm")
 
         if stenosis_results:
-            self.mld_index = stenosis_results.get('mld_index')
-            self.proximal_ref_index = stenosis_results.get('proximal_ref_index')
-            self.distal_ref_index = stenosis_results.get('distal_ref_index')
+            self.mld_index = stenosis_results.get("mld_index")
+            self.proximal_ref_index = stenosis_results.get("proximal_ref_index")
+            self.distal_ref_index = stenosis_results.get("distal_ref_index")
 
         self.update()
 
@@ -69,27 +69,45 @@ class QCAGraphWidget(QWidget):
         if self.diameter_data is None or len(self.diameter_data) == 0:
             # Show placeholder text
             painter.setPen(QPen(Qt.GlobalColor.white))
-            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter,
-                           "No QCA data available")
+            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "No QCA data available")
             return
 
         # Split view for diameter and area graphs
         graph_height = (self.height() - 3 * self.margin) // 2
 
         # Draw diameter graph
-        diameter_rect = QRectF(self.margin, self.margin,
-                             self.width() - 2 * self.margin, graph_height)
-        self._draw_graph(painter, diameter_rect, self.diameter_data,
-                        "Diameter", f"{self.unit}", self.diameter_color)
+        diameter_rect = QRectF(
+            self.margin, self.margin, self.width() - 2 * self.margin, graph_height
+        )
+        self._draw_graph(
+            painter,
+            diameter_rect,
+            self.diameter_data,
+            "Diameter",
+            f"{self.unit}",
+            self.diameter_color,
+        )
 
         # Draw area graph
-        area_rect = QRectF(self.margin, graph_height + 2 * self.margin,
-                         self.width() - 2 * self.margin, graph_height)
-        self._draw_graph(painter, area_rect, self.area_data,
-                        "Area", f"{self.unit}²", self.area_color)
+        area_rect = QRectF(
+            self.margin,
+            graph_height + 2 * self.margin,
+            self.width() - 2 * self.margin,
+            graph_height,
+        )
+        self._draw_graph(
+            painter, area_rect, self.area_data, "Area", f"{self.unit}²", self.area_color
+        )
 
-    def _draw_graph(self, painter: QPainter, rect: QRectF, data: np.ndarray,
-                   title: str, unit: str, color: QColor):
+    def _draw_graph(
+        self,
+        painter: QPainter,
+        rect: QRectF,
+        data: np.ndarray,
+        title: str,
+        unit: str,
+        color: QColor,
+    ):
         """Draw a single graph"""
         # Draw border
         painter.setPen(QPen(Qt.GlobalColor.white, 1))
@@ -126,8 +144,14 @@ class QCAGraphWidget(QWidget):
             # Value labels
             value = min_val + (i / 4) * value_range
             painter.setPen(QPen(Qt.GlobalColor.white, 1))
-            painter.drawText(int(rect.left() - 35), int(y - 5), 30, 10,
-                           Qt.AlignmentFlag.AlignRight, f"{value:.1f}")
+            painter.drawText(
+                int(rect.left() - 35),
+                int(y - 5),
+                30,
+                10,
+                Qt.AlignmentFlag.AlignRight,
+                f"{value:.1f}",
+            )
             painter.setPen(QPen(self.grid_color, 0.5, Qt.PenStyle.DotLine))
 
         # Vertical grid lines (distance markers)
@@ -140,8 +164,14 @@ class QCAGraphWidget(QWidget):
 
                     # Distance labels
                     painter.setPen(QPen(Qt.GlobalColor.white, 1))
-                    painter.drawText(int(x - 10), int(rect.bottom() + 5), 20, 15,
-                                   Qt.AlignmentFlag.AlignCenter, str(i))
+                    painter.drawText(
+                        int(x - 10),
+                        int(rect.bottom() + 5),
+                        20,
+                        15,
+                        Qt.AlignmentFlag.AlignCenter,
+                        str(i),
+                    )
                     painter.setPen(QPen(self.grid_color, 0.5, Qt.PenStyle.DotLine))
 
         # Draw reference lines if available
@@ -172,7 +202,11 @@ class QCAGraphWidget(QWidget):
         # Mark special points
         if self.mld_index is not None and self.mld_index < len(data):
             # MLD point
-            x_mld = rect.left() + (self.mld_index / (len(data) - 1)) * rect.width() if len(data) > 1 else rect.left()
+            x_mld = (
+                rect.left() + (self.mld_index / (len(data) - 1)) * rect.width()
+                if len(data) > 1
+                else rect.left()
+            )
             y_mld = rect.bottom() - ((data[self.mld_index] - min_val) / value_range) * rect.height()
 
             painter.setPen(QPen(self.mld_color, 3))

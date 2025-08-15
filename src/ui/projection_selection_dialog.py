@@ -3,16 +3,26 @@ Projection Selection Dialog
 Dialog for selecting DICOM projections with metadata display
 """
 
-from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QListWidget, QListWidgetItem,
-                             QLabel, QGroupBox, QDialogButtonBox, QSplitter)
+from PyQt6.QtWidgets import (
+    QDialog,
+    QVBoxLayout,
+    QListWidget,
+    QListWidgetItem,
+    QLabel,
+    QGroupBox,
+    QDialogButtonBox,
+    QSplitter,
+)
 from PyQt6.QtCore import Qt, pyqtSignal
 from typing import List, Dict, Any, Optional
 import logging
 
 logger = logging.getLogger(__name__)
 
+
 class ProjectionItem:
     """Data class for projection information"""
+
     def __init__(self, file_path: str, metadata: Dict[str, Any]):
         self.file_path = file_path
         self.metadata = metadata
@@ -21,28 +31,30 @@ class ProjectionItem:
     def _format_projection_name(self) -> str:
         """Format projection name from metadata"""
         # Try to get angles from positioner angles
-        primary_angle = self.metadata.get('positioner_primary_angle')
-        secondary_angle = self.metadata.get('positioner_secondary_angle')
+        primary_angle = self.metadata.get("positioner_primary_angle")
+        secondary_angle = self.metadata.get("positioner_secondary_angle")
 
         if primary_angle is not None and secondary_angle is not None:
             # Format as LAO/RAO and CRA/CAU
-            lr_view = 'LAO' if primary_angle > 0 else 'RAO'
-            cc_view = 'CRA' if secondary_angle > 0 else 'CAU'
+            lr_view = "LAO" if primary_angle > 0 else "RAO"
+            cc_view = "CRA" if secondary_angle > 0 else "CAU"
             return f"{lr_view} {abs(primary_angle):.1f}° {cc_view} {abs(secondary_angle):.1f}°"
 
         # Try view position
-        view_position = self.metadata.get('view_position')
+        view_position = self.metadata.get("view_position")
         if view_position:
             return view_position
 
         # Try series description
-        series_desc = self.metadata.get('series_description', '')
+        series_desc = self.metadata.get("series_description", "")
         if series_desc:
             return series_desc
 
         # Default to filename
         import os
+
         return os.path.basename(self.file_path)
+
 
 class ProjectionSelectionDialog(QDialog):
     """Dialog for selecting DICOM projections"""
@@ -51,7 +63,7 @@ class ProjectionSelectionDialog(QDialog):
 
     def __init__(self, projections: List[Dict[str, Any]], parent=None):
         super().__init__(parent)
-        self.projections = [ProjectionItem(p['file_path'], p['metadata']) for p in projections]
+        self.projections = [ProjectionItem(p["file_path"], p["metadata"]) for p in projections]
         self.selected_projection = None
         self.setup_ui()
         self.populate_list()
@@ -105,8 +117,7 @@ class ProjectionSelectionDialog(QDialog):
 
         # Buttons
         button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok |
-            QDialogButtonBox.StandardButton.Cancel
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
@@ -150,8 +161,8 @@ class ProjectionSelectionDialog(QDialog):
         details.append(f"<b>Projection:</b> {projection.projection_name}")
 
         # Add angle information
-        primary_angle = projection.metadata.get('positioner_primary_angle')
-        secondary_angle = projection.metadata.get('positioner_secondary_angle')
+        primary_angle = projection.metadata.get("positioner_primary_angle")
+        secondary_angle = projection.metadata.get("positioner_secondary_angle")
 
         if primary_angle is not None:
             details.append(f"<b>Primary Angle:</b> {primary_angle:.1f}°")
@@ -160,19 +171,21 @@ class ProjectionSelectionDialog(QDialog):
             details.append(f"<b>Secondary Angle:</b> {secondary_angle:.1f}°")
 
         # Add other metadata
-        if projection.metadata.get('patient_name'):
+        if projection.metadata.get("patient_name"):
             details.append(f"<b>Patient:</b> {projection.metadata['patient_name']}")
 
-        if projection.metadata.get('study_date'):
+        if projection.metadata.get("study_date"):
             details.append(f"<b>Study Date:</b> {projection.metadata['study_date']}")
 
-        if projection.metadata.get('series_description'):
+        if projection.metadata.get("series_description"):
             details.append(f"<b>Series:</b> {projection.metadata['series_description']}")
 
-        if projection.metadata.get('rows') and projection.metadata.get('columns'):
-            details.append(f"<b>Dimensions:</b> {projection.metadata['rows']}x{projection.metadata['columns']}")
+        if projection.metadata.get("rows") and projection.metadata.get("columns"):
+            details.append(
+                f"<b>Dimensions:</b> {projection.metadata['rows']}x{projection.metadata['columns']}"
+            )
 
-        if projection.metadata.get('num_frames'):
+        if projection.metadata.get("num_frames"):
             details.append(f"<b>Frames:</b> {projection.metadata['num_frames']}")
 
         # Update label
