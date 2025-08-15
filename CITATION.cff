@@ -3,7 +3,8 @@ message: "If you use this software, please cite it as below."
 authors:
 - family-names: Köksal
   given-names: Fatih
-orcid: https://orcid.org/0000-0000-0000-0000
+  orcid: https://orcid.org/0000-0002-4197-4683
 title: drfatihkoksal/Coronary_Clear_Vision_V2 - Coronary Clear Vision - AI-Powered Coronary Angiography Analysis Suite
 version: v2.0.2
+doi: 10.5281/zenodo.16883861
 date-released: 2025-01-15
