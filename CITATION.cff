@@ -1,0 +1,9 @@
+cff-version: 1.1.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: Köksal
+  given-names: Fatih
+orcid: https://orcid.org/0000-0000-0000-0000
+title: drfatihkoksal/Coronary_Clear_Vision_V2 - Coronary Clear Vision - AI-Powered Coronary Angiography Analysis Suite
+version: v2.0.2
+date-released: 2025-01-15
