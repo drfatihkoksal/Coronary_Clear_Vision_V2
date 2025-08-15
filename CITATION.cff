@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+title: Coronary Clear Vision V2
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Fatih
+    family-names: Köksal
+    email: drfatihkoksal@gmail.com
+    orcid: 'https://orcid.org/0000-0000-0000-0000'
+    affiliation: 'Your Institution'
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.XXXXXXX
+    description: Zenodo DOI
+repository-code: 'https://github.com/drfatihkoksal/Coronary_Clear_Vision_V2'
+url: 'https://github.com/drfatihkoksal/Coronary_Clear_Vision_V2'
+repository: 'https://github.com/drfatihkoksal/Coronary_Clear_Vision_V2'
+abstract: >-
+  Coronary Clear Vision V2 is an AI-powered coronary vessel analysis tool
+  that provides advanced quantitative coronary angiography (QCA) and 
+  relative wall shear stress (RWS) analysis capabilities. The software
+  integrates deep learning models for vessel segmentation, tracking, and
+  comprehensive hemodynamic analysis.
+keywords:
+  - coronary angiography
+  - medical imaging
+  - vessel analysis
+  - QCA
+  - RWS
+  - deep learning
+  - computer vision
+  - cardiology
+license: MIT
+version: 2.0.0
+date-released: '2025-01-15'
