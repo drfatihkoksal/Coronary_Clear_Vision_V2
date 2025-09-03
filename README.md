@@ -189,16 +189,6 @@ AngioPy, koroner anjiyografi görüntülerinde otomatik damar segmentasyonu içi
 - **Repository**: [GitLab - AngioPy](https://gitlab.com/angiopy/angiopy)
 - **Makale**: He, C., Liao, Z., Chen, Y. et al. (2024). "AngioPy: A Python toolkit for coronary angiography analysis with deep learning". *Medical Image Analysis*
 
-**Atıf:**
-```bibtex
-@software{angiopy2024,
-  author = {He, Chen and Liao, Zhifan and Chen, Yang},
-  title = {AngioPy: AI-powered Coronary Angiography Analysis},
-  year = {2024},
-  publisher = {GitLab},
-  doi = {10.5281/zenodo.13848135},
-  url = {https://gitlab.com/angiopy/angiopy}
-}
-```
+
 
 **Not**: AngioPy modeli bu projede otomatik olarak indirilir ve kullanılır. Model ağırlıkları Zenodo üzerinde barındırılmaktadır.
