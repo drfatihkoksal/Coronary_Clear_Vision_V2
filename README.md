@@ -9,7 +9,7 @@
 
 AI-powered coronary vessel analysis tool with advanced QCA (Quantitative Coronary Analysis) and RWS (Radial Wall Strain) capabilities.
 
-> 🤖 **Bu proje [Claude Code](https://claude.ai/code) yardımıyla geliştirilmiştir** - Anthropic'in AI destekli yazılım geliştirme asistanı
+
 
 ## 🎬 Demo
 
