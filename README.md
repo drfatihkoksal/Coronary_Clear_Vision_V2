@@ -127,17 +127,16 @@ coronary_analysis/
 
 ## 📜 Lisans
 
-**DUAL LICENSING** - İki lisans seçeneği mevcuttur:
+
 
 ### 🎓 Akademik Kullanım (Ücretsiz)
 **Academic Software License v1.1** - Creative Commons BY-NC-SA 4.0 ile uyumlu özel lisans
 
-### 💼 Ticari Kullanım
-Ticari lisans için lütfen iletişime geçin: [GitHub Issues](https://github.com/drfatihkoksal/Coronary_Clear_Vision_V2/issues)
+
 
 ### ⚠️ Önemli Kısıtlamalar:
 - ❌ **Klinik kullanım YASAKTIR** (hasta tanı/tedavisi için kullanılamaz)
-- ❌ **Ticari kullanım YASAKTIR** (ayrı lisans gerekir)
+- ❌ **Ticari kullanım YASAKTIR**
 - ❌ **FDA/CE onayı YOKTUR** (tıbbi cihaz değildir)
 - ✅ **Sadece akademik araştırma için**
 - ✅ **Eğitim ve öğretim için kullanılabilir**
