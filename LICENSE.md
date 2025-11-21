@@ -1,5 +1,5 @@
 # ACADEMIC SOFTWARE LICENSE
-Version 1.1, January 2025
+Version 1.2, January 2025
 
 Copyright (c) 2025 Dr. Fatih Köksal  
 Coronary Clear Vision V2 - AI-Powered Coronary Vessel Analysis Tool
@@ -11,18 +11,6 @@ Coronary Clear Vision V2 - AI-Powered Coronary Vessel Analysis Tool
 **This is a custom license that incorporates terms from Creative Commons BY-NC-SA 4.0 International License where applicable. In case of conflict, the more restrictive terms apply.**
 
 **LEGAL DISCLAIMER**: This custom license has not been reviewed by legal professionals. Users are advised to seek legal counsel before use, especially for institutional or organizational deployment.
-
----
-
-## DUAL LICENSING NOTICE
-
-This software is available under two licensing options:
-
-1. **Academic/Research Use**: This Academic Software License (free)
-2. **Commercial Use**: Contact the author for commercial licensing terms
-
-For commercial licensing inquiries, please contact through:  
-https://github.com/drfatihkoksal/Coronary_Clear_Vision_V2/issues
 
 ---
 
@@ -59,7 +47,7 @@ You may:
 ### 4. RESTRICTIONS
 
 You may NOT:
-- Use the Software for commercial purposes without separate commercial license
+- Use the Software for commercial purposes
 - Use the Software for clinical diagnosis or treatment
 - Use the Software in medical practice or patient care
 - Use the Software in any FDA/CE/regulatory submission
@@ -186,10 +174,9 @@ You may not assign or transfer this License or your rights hereunder without the
 
 ### 20. CONTACT INFORMATION
 
-For questions about this License or requests for different licensing terms:
+For questions about this License:
 
 - **GitHub Issues**: https://github.com/drfatihkoksal/Coronary_Clear_Vision_V2/issues
-- **Commercial Licensing**: Contact through GitHub repository
 - **Academic Collaboration**: Open an issue with "Collaboration" tag
 
 ---
@@ -206,6 +193,7 @@ IF YOU DO NOT AGREE TO THE TERMS OF THIS LICENSE, DO NOT DOWNLOAD, INSTALL, COPY
 
 - v1.0 (January 2025): Initial academic license
 - v1.1 (January 2025): Added dual licensing, CC BY-NC-SA 4.0 reference, and enhanced legal provisions
+- v1.2 (January 2025): Removed dual licensing option, strictly Academic/Research use only
 
 ---
 
