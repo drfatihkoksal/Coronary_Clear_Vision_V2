@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     max_sessions: int = 5
     db_path: Path = Path.home() / ".coronary-rws" / "sessions.db"
 
+    # Auth
+    jwt_secret: str = "development_secret_DO_NOT_USE_IN_PRODUCTION"
+    resend_api_key: str = ""
+    email_from: str = "noreply@rwsanalyser.com"
+    app_url: str = "http://localhost"
+
     model_config = {"env_prefix": "CRA_", "env_file": ".env"}
 
 

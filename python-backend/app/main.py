@@ -30,6 +30,7 @@ from app.api.routes.rws import router as rws_router
 from app.api.routes.segmentation import router as segmentation_router
 from app.api.routes.sessions import router as sessions_router
 from app.api.routes.tracking import router as tracking_router
+from app.api.routes.auth import router as auth_router
 from app.config.settings import settings
 from app.infra.persistence.db import Database
 
@@ -86,6 +87,7 @@ def create_app() -> FastAPI:
     app.include_router(export_router)
     app.include_router(sessions_router)
     app.include_router(tracking_router)
+    app.include_router(auth_router)
 
     return app
 

@@ -11,6 +11,15 @@ Pillow>=10.0.0
 scikit-image>=0.21.0
 python-multipart>=0.0.6
 
+# Auth
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.0.0,<5.0.0
+email-validator>=2.0.0
+
+# Email
+resend>=0.7.0
+
 # ML / Segmentation
 # Install torch separately for CUDA support:
 #   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121

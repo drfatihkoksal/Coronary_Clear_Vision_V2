@@ -1,5 +1,15 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect, useState, useCallback } from 'react';
+import { AuthProvider } from '@/lib/AuthContext';
+import { AuthGate } from '@/lib/AuthGate';
+import { LandingPage } from '@/pages/LandingPage';
+import { LoginPage } from '@/pages/LoginPage';
+import { RegisterPage } from '@/pages/RegisterPage';
+import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage';
+import { ResetPasswordPage } from '@/pages/ResetPasswordPage';
+import { VerifyEmailPage } from '@/pages/VerifyEmailPage';
+import { TermsPage } from '@/pages/TermsPage';
+import { PrivacyPage } from '@/pages/PrivacyPage';
 import { Header } from '@/components/layout/Header';
 import { StatusBar } from '@/components/layout/StatusBar';
 import { Toolbar } from '@/components/layout/Toolbar';
@@ -34,7 +44,6 @@ function AnalysisApp() {
   const isQfrMode = useQFRStore((s) => s.isQfrMode);
 
   const handleMaskSave = () => {
-    // Mask is already persisted server-side on each edit; just exit edit mode
     exitEditMode();
   };
 
@@ -87,7 +96,6 @@ function AnalysisApp() {
           ) : (
             <>
               <ViewerContainer />
-              {/* Chart area below viewer */}
               <div className="border-t border-border bg-surface-secondary">
                 <ECGChart />
               </div>
@@ -137,11 +145,29 @@ function AnalysisApp() {
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Navigate to="/app" replace />} />
-        <Route path="/app" element={<AnalysisApp />} />
-        <Route path="*" element={<Navigate to="/app" replace />} />
-      </Routes>
+      <AuthProvider>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+
+          {/* Protected route */}
+          <Route path="/app" element={
+            <AuthGate>
+              <AnalysisApp />
+            </AuthGate>
+          } />
+
+          {/* Catch-all */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
