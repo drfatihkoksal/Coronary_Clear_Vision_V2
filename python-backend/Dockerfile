@@ -17,7 +17,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends --fix-missing \
 COPY requirements.txt .
 
 # Install Python dependencies to /app/.local
-RUN pip install --no-cache-dir --prefix=/app/.local -r requirements.txt
+# Install deps; remove pip-installed argparse that shadows stdlib (pulled by nnunetv2→unittest2)
+RUN pip install --no-cache-dir --prefix=/app/.local -r requirements.txt && \
+    rm -f /app/.local/lib/python3.11/site-packages/argparse.py
 
 # =============================================================================
 # Stage 2: Runtime image
@@ -64,4 +66,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Run with uvicorn
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# Single worker required: SessionStore is in-memory, multiple workers cause 404s
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE = typeof __API_BASE__ !== 'undefined' ? __API_BASE__ : 'http://127.0.0.1:8000';
+const API_BASE = typeof __API_BASE__ !== 'undefined' && __API_BASE__
+  ? __API_BASE__
+  : '/api';
 
 export const apiClient = axios.create({
   baseURL: API_BASE,

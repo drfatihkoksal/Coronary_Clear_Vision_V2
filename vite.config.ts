@@ -26,8 +26,15 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        assetFileNames: 'assets/[name]-[hash][extname]',
+      },
+    },
+  },
   define: {
-    __API_BASE__: JSON.stringify('http://127.0.0.1:8000'),
+    __API_BASE__: JSON.stringify(process.env.VITE_API_BASE ?? 'http://127.0.0.1:8000'),
   },
   test: {
     globals: true,

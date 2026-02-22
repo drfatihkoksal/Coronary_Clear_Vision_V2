@@ -11,8 +11,8 @@ const API_BASE = typeof __API_BASE__ !== 'undefined' && __API_BASE__
 
 async function handleResponse(response: Response): Promise<any> {
   if (!response.ok) {
-    const data = await response.json().catch(() => ({ detail: 'Request failed' }));
-    throw new Error(data.detail || 'Request failed');
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error?.message || data.detail || 'Request failed');
   }
   return response.json();
 }

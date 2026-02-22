@@ -129,8 +129,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             });
 
             if (!response.ok) {
-                const error = await response.json().catch(() => ({ detail: 'Login failed' }));
-                throw new Error(error.detail || 'Login failed');
+                const body = await response.json().catch(() => ({}));
+                throw new Error(body.error?.message || body.detail || 'Login failed');
             }
 
             const data = await response.json();
@@ -176,8 +176,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             });
 
             if (!response.ok) {
-                const error = await response.json().catch(() => ({ detail: 'Registration failed' }));
-                throw new Error(error.detail || 'Registration failed');
+                const body = await response.json().catch(() => ({}));
+                throw new Error(body.error?.message || body.detail || 'Registration failed');
             }
 
             setState(prev => ({ ...prev, isLoading: false }));

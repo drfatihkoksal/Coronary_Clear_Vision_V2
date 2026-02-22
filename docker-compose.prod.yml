@@ -1,0 +1,74 @@
+services:
+  # ======================================================================
+  # FastAPI Backend
+  # ======================================================================
+  backend:
+    build:
+      context: ./python-backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./python-backend/models:/app/models:ro
+      - ./data:/app/data
+    environment:
+      - CRA_DEBUG=false
+      - CRA_DEVICE=cpu
+      - CRA_LOG_LEVEL=INFO
+      - CRA_HOST=0.0.0.0
+      - CRA_PORT=8000
+      - CRA_CORS_ORIGINS=["http://localhost","https://${TUNNEL_HOSTNAME:-localhost}"]
+      - CRA_DB_PATH=/app/data/sessions.db
+      - nnUNet_results=/app/models/nnunet
+      - CRA_JWT_SECRET=${JWT_SECRET}
+      - CRA_RESEND_API_KEY=${RESEND_API_KEY}
+      - CRA_EMAIL_FROM=${EMAIL_FROM:-noreply@rwsanalyser.com}
+      - CRA_APP_URL=https://${TUNNEL_HOSTNAME:-localhost}
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "4"
+    restart: unless-stopped
+    networks:
+      - coronary-net
+
+  # ======================================================================
+  # Nginx (Frontend + Reverse Proxy)
+  # ======================================================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_BASE: /api
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - coronary-net
+
+  # ======================================================================
+  # Cloudflare Tunnel (Secure Remote Access)
+  # ======================================================================
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    network_mode: host
+    restart: unless-stopped
+    depends_on:
+      frontend:
+        condition: service_started
+
+networks:
+  coronary-net:
+    driver: bridge

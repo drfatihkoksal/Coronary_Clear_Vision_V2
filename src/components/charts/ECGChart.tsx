@@ -154,7 +154,7 @@ export function ECGChart() {
 
     // Motion signal overlay
     if (hasMotion && motionVisible) {
-      const motionValToY = drawSignal(motionSignal!, MOTION_COLOR, 1.2);
+      drawSignal(motionSignal!, MOTION_COLOR, 1.2);
 
       // Motion peaks — map using motion signal length (frame-based)
       if (motionPeaks.length > 0) {
