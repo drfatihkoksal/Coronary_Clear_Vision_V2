@@ -32,7 +32,7 @@ import { useMaskEditStore } from '@/stores/maskEditStore';
 import { useQFRStore } from '@/stores/qfrStore';
 import '@/stores/timingStore'; // side-effect: registers eventBus listeners
 
-type RightPanelTab = 'segmentation' | 'qca' | 'calibration' | 'rws' | 'tracking' | 'qfr' | 'export';
+type RightPanelTab = 'segmentation' | 'calibration' | 'rws' | 'tracking' | 'qfr' | 'export';
 
 function AnalysisApp() {
   const startHealthPolling = useSessionStore((s) => s.startHealthPolling);
@@ -108,9 +108,6 @@ function AnalysisApp() {
             <button className={tabClass('segmentation')} onClick={() => setActiveTab('segmentation')} role="tab" aria-selected={activeTab === 'segmentation'}>
               Segment
             </button>
-            <button className={tabClass('qca')} onClick={() => setActiveTab('qca')} role="tab" aria-selected={activeTab === 'qca'}>
-              QCA
-            </button>
             <button className={tabClass('calibration')} onClick={() => setActiveTab('calibration')} role="tab" aria-selected={activeTab === 'calibration'}>
               Calib
             </button>
@@ -127,8 +124,14 @@ function AnalysisApp() {
               Export
             </button>
           </div>
-          {activeTab === 'segmentation' && <SegmentationPanel />}
-          {activeTab === 'qca' && <QCAPanel />}
+          {activeTab === 'segmentation' && (
+            <>
+              <SegmentationPanel />
+              <div className="border-t border-border">
+                <QCAPanel />
+              </div>
+            </>
+          )}
           {activeTab === 'calibration' && <CalibrationPanel />}
           {activeTab === 'rws' && <RWSPanel />}
           {activeTab === 'tracking' && <TrackingPanel />}

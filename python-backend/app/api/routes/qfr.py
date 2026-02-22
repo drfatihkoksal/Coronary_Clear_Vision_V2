@@ -217,6 +217,7 @@ async def segment_projection(
     proj.diameters_px = result["diameters_px"]
     proj.diameters_mm = [d * proj.pixel_spacing for d in proj.diameters_px]
     proj.mask = result["mask"]
+    proj.probability_map = result.get("probability_map")
 
     return {
         "projection_id": request.projection_id,

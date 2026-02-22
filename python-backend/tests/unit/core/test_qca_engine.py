@@ -41,7 +41,7 @@ class TestQCAEngine:
         result = compute_qca_measurements(mask, centerline, pixel_spacing_mm=0.3, method="gaussian")
         assert result["mld_mm"] > 0
         assert result["method"] == "gaussian"
-        assert result["num_points"] == 50
+        assert result["num_points"] > 0  # auto-calculated based on vessel length
 
     def test_parabolic_method(self):
         """Parabolic method should produce valid results."""
@@ -64,7 +64,8 @@ class TestQCAEngine:
             "centerline", "diameter_profile_mm", "diameter_profile_px",
             "distances_mm", "mld_mm", "mld_px", "mld_index",
             "diameter_stenosis_pct", "proximal_ref_mm", "distal_ref_mm",
-            "proximal_ref_index", "distal_ref_index", "lesion_length_mm",
+            "proximal_ref_index", "distal_ref_index", "interpolated_ref_mm",
+            "lesion_length_mm",
             "pixel_spacing_mm", "num_points", "method", "vessel_length_mm",
         }
         assert set(result.keys()) == expected_keys

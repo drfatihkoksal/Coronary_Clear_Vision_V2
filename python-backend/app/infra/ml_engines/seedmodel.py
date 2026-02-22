@@ -67,8 +67,8 @@ class SeedModelEngine(BaseSegmentationEngine):
         image: np.ndarray,
         roi: tuple[int, int, int, int] | None = None,
         seed_points: list[tuple[int, int]] | None = None,
-    ) -> tuple[np.ndarray, float]:
-        """Segment vessel using seed-point guidance. Returns (mask, confidence)."""
+    ) -> tuple[np.ndarray, float, np.ndarray | None]:
+        """Segment vessel using seed-point guidance. Returns (mask, confidence, prob_map)."""
         if not self._available:
             raise RuntimeError("SeedModel not available")
 
@@ -207,6 +207,7 @@ class SeedModelEngine(BaseSegmentationEngine):
         binary_mask = (prob > 0.5).astype(np.uint8)
 
         # Resize back to original dimensions
+        prob_resized = prob
         if binary_mask.shape != original_shape:
             try:
                 import cv2
@@ -216,12 +217,19 @@ class SeedModelEngine(BaseSegmentationEngine):
                     (original_shape[1], original_shape[0]),
                     interpolation=cv2.INTER_NEAREST,
                 )
+                # Bilinear for prob map — preserves soft edge gradients
+                prob_resized = cv2.resize(
+                    prob,
+                    (original_shape[1], original_shape[0]),
+                    interpolation=cv2.INTER_LINEAR,
+                )
             except ImportError:
                 from scipy.ndimage import zoom
 
                 zy = original_shape[0] / binary_mask.shape[0]
                 zx = original_shape[1] / binary_mask.shape[1]
                 binary_mask = (zoom(binary_mask.astype(np.float32), (zy, zx), order=0) > 0.5).astype(np.uint8)
+                prob_resized = zoom(prob, (zy, zx), order=1)  # bilinear
 
         # Scale mask values to 0/255 (codebase convention)
         mask_255 = binary_mask * 255
@@ -235,7 +243,7 @@ class SeedModelEngine(BaseSegmentationEngine):
         else:
             confidence = 0.5
 
-        return mask_255, confidence
+        return mask_255, confidence, prob_resized.astype(np.float32)
 
     def _prepare_input(
         self, image: np.ndarray, seed_points: list[tuple[int, int]]
@@ -346,7 +354,7 @@ class SeedModelEngine(BaseSegmentationEngine):
         image: np.ndarray,
         roi: tuple[int, int, int, int] | None = None,
         seed_points: list[tuple[int, int]] | None = None,
-    ) -> tuple[np.ndarray, float]:
+    ) -> tuple[np.ndarray, float, None]:
         """Threshold fallback when seeds are missing or model unavailable."""
         threshold = np.mean(image) * 0.7
         mask = (image < threshold).astype(np.uint8) * 255
@@ -357,4 +365,4 @@ class SeedModelEngine(BaseSegmentationEngine):
             roi_mask[y : y + h, x : x + w] = mask[y : y + h, x : x + w]
             mask = roi_mask
 
-        return mask, 0.3
+        return mask, 0.3, None

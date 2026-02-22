@@ -769,6 +769,7 @@ def measure_diameters_at_points(
     points_xy: list[tuple[float, float]],
     mask: np.ndarray,
     max_radius: int = 50,
+    probability_map: np.ndarray | None = None,
 ) -> list[float]:
     """Measure vessel diameter at specific points using perpendicular Gaussian fitting.
 
@@ -785,6 +786,12 @@ def measure_diameters_at_points(
         points_xy: List of (x, y) measurement points, ordered along vessel
         mask: Binary segmentation mask (0 or 255)
         max_radius: Maximum perpendicular search radius in pixels
+        probability_map: Optional soft probability map (float32, 0..1).
+            When provided, used directly for Gaussian fitting instead of
+            the binary mask. This preserves sub-pixel edge information
+            from the segmentation model's sigmoid/softmax output.
+            When None, a Gaussian-blurred version of the binary mask is
+            used to create soft edges for the fitter.
 
     Returns:
         List of diameters in pixels at each point
@@ -792,7 +799,19 @@ def measure_diameters_at_points(
     if len(points_xy) < 2:
         return []
 
-    prob_map = (mask > 127).astype(np.float32)
+    if probability_map is not None:
+        prob_map = probability_map.astype(np.float32)
+    else:
+        # Apply Gaussian blur to binary mask to create soft edges.
+        # A hard binary (0/1) forces the Gaussian fitter to fit a bell
+        # curve to a step function, limiting sub-pixel accuracy. Blurring
+        # with sigma=1.5 creates a smooth gradient at vessel boundaries
+        # that gives the fitter meaningful edge information, similar to
+        # what a raw probability map would provide.
+        from scipy.ndimage import gaussian_filter
+        binary_float = (mask > 127).astype(np.float32)
+        prob_map = gaussian_filter(binary_float, sigma=1.5)
+
     pts = np.array(points_xy, dtype=np.float64)  # Nx2, columns are (x, y)
     n = len(pts)
 

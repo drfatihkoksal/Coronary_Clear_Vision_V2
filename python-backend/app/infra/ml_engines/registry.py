@@ -25,7 +25,7 @@ class ThresholdEngine(BaseSegmentationEngine):
         image: np.ndarray,
         roi: tuple[int, int, int, int] | None = None,
         seed_points: list[tuple[int, int]] | None = None,
-    ) -> tuple[np.ndarray, float]:
+    ) -> tuple[np.ndarray, float, None]:
         threshold = np.mean(image) * 0.7
         mask = np.zeros_like(image, dtype=np.uint8)
 
@@ -36,7 +36,7 @@ class ThresholdEngine(BaseSegmentationEngine):
         else:
             mask = (image < threshold).astype(np.uint8) * 255
 
-        return mask, 0.3
+        return mask, 0.3, None
 
 
 class EngineRegistry:

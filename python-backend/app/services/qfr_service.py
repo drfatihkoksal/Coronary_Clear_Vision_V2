@@ -2,6 +2,7 @@
 import logging
 from dataclasses import dataclass, field
 import numpy as np
+from scipy.ndimage import gaussian_filter1d
 from app.core.stereo_reconstructor import reconstruct_3d_centerline, compute_angular_separation, ProjectionParams, build_camera_matrix
 from app.core.qfr_calculator import calculate_qfr
 from app.core.vessel_mesher import generate_vessel_mesh
@@ -30,6 +31,7 @@ class QFRProjection:
     timi_start: int | None = None
     timi_end: int | None = None
     mask: np.ndarray | None = None
+    probability_map: np.ndarray | None = None
 
 
 @dataclass
@@ -95,8 +97,8 @@ class QFRService:
         p2: 'QFRProjection',
         t1_fractions: np.ndarray,
         t2_fractions: np.ndarray,
-        depth_correction_1: float = 1.0,
-        depth_correction_2: float = 1.0,
+        depth_correction_1: np.ndarray | float = 1.0,
+        depth_correction_2: np.ndarray | float = 1.0,
     ) -> MatchedDiameters:
         """Measure diameters at epipolar-matched 2D points from both masks.
 
@@ -111,8 +113,9 @@ class QFRService:
         different vessel positions in the two views.
 
         Args:
-            depth_correction_1: Z_vessel/SOD for view 1 (corrects isocenter
-                pixel spacing to actual vessel depth). Default 1.0 = no correction.
+            depth_correction_1: Per-point Z_vessel/SOD array for view 1, or
+                scalar fallback. Corrects isocenter pixel spacing to actual
+                vessel depth at each measurement point.
             depth_correction_2: Same for view 2.
 
         Falls back to interpolated EDT diameters if masks are unavailable.
@@ -138,12 +141,12 @@ class QFRService:
             pts2_y = np.interp(t2_fractions, arc2, cl2[:, 1])
             pts2 = [(float(x), float(y)) for x, y in zip(pts2_x, pts2_y)]
 
-            d1_px = measure_diameters_at_points(pts1, p1.mask)
-            d2_px = measure_diameters_at_points(pts2, p2.mask)
+            d1_px = measure_diameters_at_points(pts1, p1.mask, probability_map=p1.probability_map)
+            d2_px = measure_diameters_at_points(pts2, p2.mask, probability_map=p2.probability_map)
 
-            # Convert px → mm using depth-corrected pixel spacing.
-            # isocenter_ps × (Z_vessel / SOD) gives the true pixel spacing
-            # at the vessel's actual depth from the X-ray source.
+            # Convert px → mm using per-point depth-corrected pixel spacing.
+            # isocenter_ps × (Z_vessel_i / SOD) gives the true pixel spacing
+            # at each point's actual depth from the X-ray source.
             d1_mm = np.array(d1_px, dtype=np.float64) * p1.pixel_spacing * depth_correction_1
             d2_mm = np.array(d2_px, dtype=np.float64) * p2.pixel_spacing * depth_correction_2
 
@@ -229,10 +232,13 @@ class QFRService:
                 view2_mm=d2_mm,
             )
 
-        # Fallback: interpolate pre-computed EDT diameters using arc-length
-        # Apply depth correction to pre-computed mm diameters
-        d1 = np.array(p1.diameters_mm, dtype=np.float64) * depth_correction_1
-        d2 = np.array(p2.diameters_mm, dtype=np.float64) * depth_correction_2
+        # Fallback: interpolate pre-computed EDT diameters using arc-length.
+        # Use median (scalar) depth correction here since EDT diameters are at
+        # 2D positions and per-point depth correction arrays are at 3D positions.
+        dc1_scalar = float(np.median(depth_correction_1)) if isinstance(depth_correction_1, np.ndarray) else float(depth_correction_1)
+        dc2_scalar = float(np.median(depth_correction_2)) if isinstance(depth_correction_2, np.ndarray) else float(depth_correction_2)
+        d1 = np.array(p1.diameters_mm, dtype=np.float64) * dc1_scalar
+        d2 = np.array(p2.diameters_mm, dtype=np.float64) * dc2_scalar
         cl1 = np.array(p1.centerline, dtype=np.float64)
         cl2 = np.array(p2.centerline, dtype=np.float64)
         arc1 = QFRService._arc_length_fractions(cl1) if len(cl1) == len(d1) else np.linspace(0, 1, len(d1))
@@ -306,12 +312,16 @@ class QFRService:
         centerline_3d_arr = np.asarray(centerline_3d, dtype=np.float64)
         n_3d = len(centerline_3d_arr)
 
-        # ---- Depth correction ----
+        # ---- Per-point depth correction ----
         # The isocenter pixel spacing (ps_iso = detector_ps × SOD/SID) assumes
         # the vessel is at the isocenter. In cardiac angiography, coronary
         # arteries are typically 5-15cm anterior to the isocenter.
-        # After stereo reconstruction, we KNOW the actual 3D depth.
-        # True diameter = pixel_diam × ps_iso × (Z_vessel / SOD).
+        # After stereo reconstruction, we KNOW the actual 3D depth at each point.
+        # True diameter_i = pixel_diam_i × ps_iso × (Z_vessel_i / SOD).
+        #
+        # Previously a single median Z was used. Now we compute smoothed
+        # per-point Z to capture proximal→distal magnification differences
+        # (up to several cm depth variation along a wrapping coronary).
         K1, R1, t1_cam, P1 = build_camera_matrix(params1)
         K2, R2, t2_cam, P2 = build_camera_matrix(params2)
 
@@ -321,31 +331,49 @@ class QFRService:
         Z1_all = (Rt1 @ pts_hom.T)[2, :]  # depth in camera 1 frame
         Z2_all = (Rt2 @ pts_hom.T)[2, :]  # depth in camera 2 frame
 
-        # Use median depth (robust to outlier 3D points)
+        # Smoothed per-point depth correction.
+        # Raw per-point Z from DLT is noisy (~1mm/pixel mismatch), so
+        # Gaussian smoothing removes jitter while preserving the real
+        # proximal→distal depth gradient (which drives magnification change).
+        # Sigma scales with point count to give consistent physical smoothing.
+        z_smooth_sigma = max(5, n_3d // 10)
+
+        # Replace non-positive Z with median of positive values (robust anchor)
         Z1_pos = Z1_all[Z1_all > 0]
         Z2_pos = Z2_all[Z2_all > 0]
         median_Z1 = float(np.median(Z1_pos)) if len(Z1_pos) > 0 else p1.sod
         median_Z2 = float(np.median(Z2_pos)) if len(Z2_pos) > 0 else p2.sod
 
-        depth_corr_1 = median_Z1 / p1.sod
-        depth_corr_2 = median_Z2 / p2.sod
+        Z1_clean = np.where(Z1_all > 0, Z1_all, median_Z1)
+        Z2_clean = np.where(Z2_all > 0, Z2_all, median_Z2)
+
+        Z1_smooth = gaussian_filter1d(Z1_clean, sigma=z_smooth_sigma)
+        Z2_smooth = gaussian_filter1d(Z2_clean, sigma=z_smooth_sigma)
+
+        depth_corr_1 = Z1_smooth / p1.sod  # N-length array
+        depth_corr_2 = Z2_smooth / p2.sod  # N-length array
+
+        # Scalar median for vessel length (smoothed per-point is for diameters)
+        median_depth_corr_1 = median_Z1 / p1.sod
+        median_depth_corr_2 = median_Z2 / p2.sod
 
         logger.info(
-            "Depth correction: view1 Z=%.1fmm SOD=%.1fmm corr=%.3f | "
-            "view2 Z=%.1fmm SOD=%.1fmm corr=%.3f",
-            median_Z1, p1.sod, depth_corr_1,
-            median_Z2, p2.sod, depth_corr_2,
+            "Depth correction (per-point): view1 Z_range=[%.1f, %.1f]mm median=%.1fmm SOD=%.1fmm | "
+            "view2 Z_range=[%.1f, %.1f]mm median=%.1fmm SOD=%.1fmm",
+            float(Z1_smooth.min()), float(Z1_smooth.max()), median_Z1, p1.sod,
+            float(Z2_smooth.min()), float(Z2_smooth.max()), median_Z2, p2.sod,
         )
 
         # Vessel length from 2D centerlines (more robust than noisy 3D depth).
         # With typical 25-40° angular separation, parallax-based depth is noisy
         # (~1mm error per pixel mismatch), inflating the 3D path length.
         # Using max of 2D lengths picks the less foreshortened projection.
-        # Also apply depth correction to get true vessel length.
+        # Median depth correction for length (scalar is appropriate here since
+        # length integrates over the full vessel).
         cl1_arr = np.array(p1.centerline, dtype=np.float64)
         cl2_arr = np.array(p2.centerline, dtype=np.float64)
-        len_2d_1 = float(np.sum(np.sqrt(np.sum(np.diff(cl1_arr, axis=0) ** 2, axis=1)))) * p1.pixel_spacing * depth_corr_1
-        len_2d_2 = float(np.sum(np.sqrt(np.sum(np.diff(cl2_arr, axis=0) ** 2, axis=1)))) * p2.pixel_spacing * depth_corr_2
+        len_2d_1 = float(np.sum(np.sqrt(np.sum(np.diff(cl1_arr, axis=0) ** 2, axis=1)))) * p1.pixel_spacing * median_depth_corr_1
+        len_2d_2 = float(np.sum(np.sqrt(np.sum(np.diff(cl2_arr, axis=0) ** 2, axis=1)))) * p2.pixel_spacing * median_depth_corr_2
         vessel_length_2d = max(len_2d_1, len_2d_2)
 
         # Re-measure diameters at epipolar-matched 2D points from masks.
@@ -448,13 +476,14 @@ class QFRService:
             centerline_3d, diameters_3d.tolist(), qfr_result.get("pressure_profile"),
         )
 
-        # Store in session (include per-view diameters for recalculate)
+        # Store in session (include per-view diameters and vessel length for recalculate)
         qfr_session.result_3d = {
             "centerline_3d": centerline_3d,
             "diameters_3d": diameters_3d.tolist(),
             "view1_diameters_mm": matched.view1_mm.tolist(),
             "view2_diameters_mm": matched.view2_mm.tolist(),
             "angular_separation": angular_sep,
+            "vessel_length_2d_mm": vessel_length_2d,
         }
         qfr_session.mesh = mesh
         qfr_session.qfr_result = qfr_result
@@ -494,12 +523,15 @@ class QFRService:
             if idx < 0 or idx >= len(diameters_3d):
                 raise ValueError(f"Stenosis index {idx} out of range (0-{len(diameters_3d)-1})")
 
-        # Recompute vessel length from 2D (same logic as reconstruct_and_calculate)
-        cl1_arr = np.array(p1.centerline, dtype=np.float64)
-        cl2_arr = np.array(p2.centerline, dtype=np.float64)
-        len_2d_1 = float(np.sum(np.sqrt(np.sum(np.diff(cl1_arr, axis=0) ** 2, axis=1)))) * p1.pixel_spacing
-        len_2d_2 = float(np.sum(np.sqrt(np.sum(np.diff(cl2_arr, axis=0) ** 2, axis=1)))) * p2.pixel_spacing
-        vessel_length_2d = max(len_2d_1, len_2d_2)
+        # Use cached depth-corrected vessel length from reconstruction
+        vessel_length_2d = qfr_session.result_3d.get("vessel_length_2d_mm")
+        if vessel_length_2d is None:
+            # Fallback for sessions reconstructed before this field was added
+            cl1_arr = np.array(p1.centerline, dtype=np.float64)
+            cl2_arr = np.array(p2.centerline, dtype=np.float64)
+            len_2d_1 = float(np.sum(np.sqrt(np.sum(np.diff(cl1_arr, axis=0) ** 2, axis=1)))) * p1.pixel_spacing
+            len_2d_2 = float(np.sum(np.sqrt(np.sum(np.diff(cl2_arr, axis=0) ** 2, axis=1)))) * p2.pixel_spacing
+            vessel_length_2d = max(len_2d_1, len_2d_2)
 
         # TIMI frame count
         timi_count = None

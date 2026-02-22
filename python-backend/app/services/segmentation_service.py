@@ -38,7 +38,7 @@ class SegmentationService:
             )
 
         start = time.time()
-        mask, confidence = engine.segment(image, roi=roi, seed_points=seed_points)
+        mask, confidence, probability_map = engine.segment(image, roi=roi, seed_points=seed_points)
         inference_ms = (time.time() - start) * 1000
 
         centerline = extract_centerline(
@@ -61,6 +61,7 @@ class SegmentationService:
         return {
             "engine": engine_type.value,
             "mask": mask,
+            "probability_map": probability_map,
             "confidence": confidence,
             "inference_time_ms": inference_ms,
             "centerline": centerline,

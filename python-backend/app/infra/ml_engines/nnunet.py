@@ -203,8 +203,12 @@ class NNUNetEngine(BaseSegmentationEngine):
         image: np.ndarray,
         roi: tuple[int, int, int, int] | None = None,
         seed_points: list[tuple[int, int]] | None = None,
-    ) -> tuple[np.ndarray, float]:
-        """Segment vessel in image. Returns (mask, confidence)."""
+    ) -> tuple[np.ndarray, float, None]:
+        """Segment vessel in image. Returns (mask, confidence, None).
+
+        nnU-Net predictor returns binary masks; probability maps are not
+        exposed through its high-level API. Returns None for prob_map.
+        """
         if not self._available:
             raise RuntimeError(f"nnU-Net {self._variant} model not available")
 
@@ -298,7 +302,7 @@ class NNUNetEngine(BaseSegmentationEngine):
 
     # -- Real inference -------------------------------------------------------
 
-    def _predict_direct(self, image: np.ndarray) -> tuple[np.ndarray, float]:
+    def _predict_direct(self, image: np.ndarray) -> tuple[np.ndarray, float, None]:
         """Predict without explicit ROI.
 
         For roi/wide variants the image is center-cropped to target_size
@@ -374,11 +378,11 @@ class NNUNetEngine(BaseSegmentationEngine):
         mask = mask * 255
 
         confidence = self._calculate_confidence(mask)
-        return mask, confidence
+        return mask, confidence, None
 
     def _predict_with_roi(
         self, image: np.ndarray, roi: tuple[int, int, int, int]
-    ) -> tuple[np.ndarray, float]:
+    ) -> tuple[np.ndarray, float, None]:
         """ROI-based prediction: crop -> inference -> restore to original coordinates."""
         original_shape = image.shape[:2]
         target_size = self._target_size
@@ -440,7 +444,7 @@ class NNUNetEngine(BaseSegmentationEngine):
         full_mask = full_mask * 255
 
         confidence = self._calculate_confidence(full_mask)
-        return full_mask, confidence
+        return full_mask, confidence, None
 
     # -- Preprocessing / postprocessing helpers --------------------------------
 
@@ -605,7 +609,7 @@ class NNUNetEngine(BaseSegmentationEngine):
 
     def _threshold_fallback(
         self, image: np.ndarray, roi: tuple[int, int, int, int] | None = None,
-    ) -> tuple[np.ndarray, float]:
+    ) -> tuple[np.ndarray, float, None]:
         """Simple threshold-based segmentation as fallback."""
         if roi is not None:
             x, y, w, h = roi
@@ -622,4 +626,4 @@ class NNUNetEngine(BaseSegmentationEngine):
         else:
             mask = (image < threshold).astype(np.uint8) * 255
 
-        return mask, 0.3
+        return mask, 0.3, None

@@ -261,27 +261,53 @@ def _bilinear_sample(
 
 
 def _gaussian_diameter(t: np.ndarray, profile: np.ndarray) -> float:
-    """Fit Gaussian to profile → FWHM = 2.355 * sigma."""
+    """Fit Gaussian to profile → FWHM = 2.355 * sigma.
+
+    Uses bounded optimization and cross-validates against threshold
+    estimate to prevent wild overestimates from poorly constrained fits.
+    """
+    if len(profile) < 5:
+        return _threshold_diameter(t, profile)
+
+    # Get threshold-based estimate for initialization and validation
+    d_threshold = _threshold_diameter(t, profile)
+
     A_init = float(profile.max() - profile.min())
     mu_init = float(t[np.argmax(profile)])
-    sigma_init = 5.0
+    # Initialize sigma from threshold estimate (much better than fixed 5.0)
+    sigma_init = max(1.0, d_threshold / 2.355) if d_threshold > 0 else 3.0
     offset_init = float(profile.min())
 
     def gaussian(x, A, mu, sigma, offset):
         return A * np.exp(-((x - mu) ** 2) / (2 * sigma ** 2)) + offset
 
     try:
+        t_range = float(t[-1] - t[0])
         popt, _ = curve_fit(
             gaussian, t, profile,
             p0=[A_init, mu_init, sigma_init, offset_init],
+            bounds=(
+                [0.0, t[0], 0.3, -0.1],                      # lower
+                [A_init * 2 + 0.1, t[-1], t_range / 2, 0.5],  # upper
+            ),
             maxfev=1000,
         )
         diameter = 2.355 * abs(popt[2])  # FWHM
-        if diameter > len(t) or diameter < 1:
-            return _threshold_diameter(t, profile)
+
+        # Sanity checks: reject clearly wrong fits
+        if diameter > t_range or diameter < 1:
+            return d_threshold if d_threshold > 0 else 0.0
+
+        # Cross-validate: if Gaussian FWHM disagrees with threshold by >60%,
+        # prefer threshold (more robust for binary masks with sharp edges)
+        if d_threshold > 0:
+            ratio = diameter / d_threshold
+            if ratio > 1.6 or ratio < 0.5:
+                return d_threshold
+
         return diameter
     except (RuntimeError, ValueError):
-        return _threshold_diameter(t, profile)
+        return d_threshold if d_threshold > 0 else 0.0
 
 
 def _parabolic_diameter(t: np.ndarray, profile: np.ndarray) -> float:
