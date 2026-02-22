@@ -17,13 +17,14 @@ function ProjectionCanvas({ projectionId, width, height }: ProjectionCanvasProps
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const bitmapRef = useRef<ImageBitmap | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [frameIndex, setFrameIndex] = useState(0);
+
+  const proj = useQFRStore((s) => (projectionId === 1 ? s.projection1 : s.projection2));
+
+  const [frameIndex, setFrameIndex] = useState(proj.segmentedFrameIndex ?? 0);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isDraggingMld, setIsDraggingMld] = useState(false);
   const [dragMldIdx, setDragMldIdx] = useState<number | null>(null);
   const [isHoveringMld, setIsHoveringMld] = useState(false);
-
-  const proj = useQFRStore((s) => (projectionId === 1 ? s.projection1 : s.projection2));
   const isUploading = useQFRStore((s) => s.isUploading);
   const isSegmenting = useQFRStore((s) => s.isSegmenting);
   const activeTool = useQFRStore((s) => s.activeTool);
@@ -580,7 +581,6 @@ function ProjectionCanvas({ projectionId, width, height }: ProjectionCanvasProps
       <input
         ref={fileRef}
         type="file"
-        accept=".dcm,.dicom"
         className="hidden"
         onChange={handleFileInput}
       />
