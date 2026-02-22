@@ -1,0 +1,52 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./python-backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./python-backend/models:/app/models:ro
+      - ./data:/app/data
+    environment:
+      - CRA_DEBUG=false
+      - CRA_DEVICE=cpu
+      - CRA_LOG_LEVEL=INFO
+      - CRA_HOST=0.0.0.0
+      - CRA_PORT=8000
+      - CRA_CORS_ORIGINS=["http://localhost:8080","https://${TUNNEL_HOSTNAME:-localhost}"]
+      - nnUNet_results=/app/models/nnunet
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "4"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        - VITE_API_BASE=
+    ports:
+      - "8080:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    depends_on:
+      - frontend
+    restart: unless-stopped

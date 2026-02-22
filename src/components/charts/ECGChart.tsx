@@ -154,7 +154,7 @@ export function ECGChart() {
 
     // Motion signal overlay
     if (hasMotion && motionVisible) {
-      const motionValToY = drawSignal(motionSignal!, MOTION_COLOR, 1.2);
+      drawSignal(motionSignal!, MOTION_COLOR, 1.2);
 
       // Motion peaks — map using motion signal length (frame-based)
       if (motionPeaks.length > 0) {
@@ -233,8 +233,8 @@ export function ECGChart() {
       ctx.fillText(hint, w - tw - 4 * dpr, h - 4 * dpr);
     }
   }, [ecgSignal, rPeaks, beatBoundaries, heartRate, currentFrame, totalFrames,
-      ecgVisible, motionVisible, motionSignal, motionPeaks, isEditMode,
-      isDragging, dragPeakIndex, dragX, hasEcg, hasMotion]);
+    ecgVisible, motionVisible, motionSignal, motionPeaks, isEditMode,
+    isDragging, dragPeakIndex, dragX, hasEcg, hasMotion]);
 
   // Resize
   useEffect(() => {
@@ -325,9 +325,8 @@ export function ECGChart() {
         {hasEcg && (
           <button
             onClick={() => useTimingStore.getState().toggleEcgVisible()}
-            className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
-              ecgVisible ? 'bg-green-600 text-white' : 'bg-gray-700/80 text-gray-500 hover:bg-gray-600'
-            }`}
+            className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${ecgVisible ? 'bg-green-600 text-white' : 'bg-gray-700/80 text-gray-500 hover:bg-gray-600'
+              }`}
             title={ecgVisible ? 'Hide ECG' : 'Show ECG'}
           >
             <span className="text-green-300">&#9679;</span> ECG
@@ -336,9 +335,8 @@ export function ECGChart() {
         {hasMotion && (
           <button
             onClick={() => useTimingStore.getState().toggleMotionVisible()}
-            className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
-              motionVisible ? 'bg-cyan-600 text-white' : 'bg-gray-700/80 text-gray-500 hover:bg-gray-600'
-            }`}
+            className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${motionVisible ? 'bg-cyan-600 text-white' : 'bg-gray-700/80 text-gray-500 hover:bg-gray-600'
+              }`}
             title={motionVisible ? 'Hide Motion' : 'Show Motion'}
           >
             <span className="text-cyan-300">&#9650;</span> Motion
@@ -347,9 +345,8 @@ export function ECGChart() {
         {hasEcg && (
           <button
             onClick={() => useTimingStore.getState().toggleEcgEditMode()}
-            className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
-              isEditMode ? 'bg-yellow-600 text-white' : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600'
-            }`}
+            className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${isEditMode ? 'bg-yellow-600 text-white' : 'bg-gray-700/80 text-gray-300 hover:bg-gray-600'
+              }`}
             title={isEditMode ? 'Exit R-peak edit' : 'Edit R-peaks'}
           >
             {isEditMode ? '\u2713 R-peaks' : '\u270F R-peaks'}
