@@ -1,6 +1,7 @@
-version: "3.8"
-
 services:
+  # ======================================================================
+  # FastAPI Backend
+  # ======================================================================
   backend:
     build:
       context: ./python-backend
@@ -14,7 +15,7 @@ services:
       - CRA_LOG_LEVEL=INFO
       - CRA_HOST=0.0.0.0
       - CRA_PORT=8000
-      - CRA_CORS_ORIGINS=["http://localhost:8080","https://${TUNNEL_HOSTNAME:-localhost}"]
+      - CRA_CORS_ORIGINS=["http://localhost","https://${TUNNEL_HOSTNAME:-localhost}"]
       - nnUNet_results=/app/models/nnunet
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
@@ -28,25 +29,45 @@ services:
           memory: 4G
           cpus: "4"
     restart: unless-stopped
+    networks:
+      - coronary-net
 
+  # ======================================================================
+  # Nginx (Frontend + Reverse Proxy)
+  # ======================================================================
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-      args:
-        - VITE_API_BASE=
     ports:
-      - "8080:8080"
+      - "80:80"
     depends_on:
       backend:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - coronary-net
 
+  # ======================================================================
+  # Cloudflare Tunnel (Secure Remote Access)
+  # ======================================================================
   tunnel:
     image: cloudflare/cloudflared:latest
     command: tunnel run
     environment:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN}
-    depends_on:
-      - frontend
     restart: unless-stopped
+    networks:
+      coronary-net:
+        aliases:
+          - cloudflared
+    depends_on:
+      frontend:
+        condition: service_started
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+
+networks:
+  coronary-net:
+    driver: bridge

@@ -42,7 +42,7 @@ echo ""
 echo "Servis durumları:"
 docker compose -f docker-compose.prod.yml ps
 echo ""
-echo -e "Local:  ${GREEN}http://localhost:8080${NC}"
+echo -e "Local:  ${GREEN}http://localhost${NC}"
 echo -e "Tunnel: ${GREEN}Cloudflare Dashboard'dan kontrol edin${NC}"
 echo ""
 echo "Logları görmek için:"
