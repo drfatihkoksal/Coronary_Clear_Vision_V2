@@ -1,0 +1,23 @@
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+pydicom>=2.4.0
+python-gdcm>=3.0.10
+numpy>=1.24.0
+scipy>=1.11.0
+opencv-python-headless>=4.8.0
+Pillow>=10.0.0
+scikit-image>=0.21.0
+python-multipart>=0.0.6
+
+# ML / Segmentation
+# Install torch separately for CUDA support:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+# For CPU-only:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+torch>=2.0.0
+torchvision>=0.15.0
+nnunetv2>=2.2
+segmentation-models-pytorch>=0.3.3
+timm>=0.9.0

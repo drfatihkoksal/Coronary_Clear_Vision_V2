@@ -1,0 +1,87 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+*.whl
+.venv/
+venv/
+env/
+.Python
+
+# Python testing
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Node / Frontend
+node_modules/
+dist/
+.vite/
+*.local
+.turbo/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# DICOM data (never commit patient data)
+*.dcm
+*.DCM
+dicom_data/
+dicom/
+
+# ML models (too large for git)
+models/
+*.pth
+*.pt
+*.onnx
+*.h5
+*.hdf5
+*.pkl
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Build artifacts
+*.tar.gz
+*.zip
+
+# Coverage
+coverage/
+*.lcov
+
+# Tauri
+src-tauri/target/
+
+# Temporary
+tmp/
+temp/

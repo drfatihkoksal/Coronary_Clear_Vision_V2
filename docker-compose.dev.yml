@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./python-backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./python-backend/app:/app/app:ro
+      - ./python-backend/models:/app/models:ro
+      - ./data:/app/data
+    environment:
+      - CRA_DEBUG=true
+      - CRA_DEVICE=cpu
+      - CRA_LOG_LEVEL=DEBUG
+      - CRA_HOST=0.0.0.0
+      - CRA_PORT=8000
+      - CRA_CORS_ORIGINS=["http://localhost:5173","http://localhost:1420"]
+      - nnUNet_results=/app/models/nnunet
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "4"
