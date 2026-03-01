@@ -85,3 +85,7 @@ src-tauri/target/
 # Temporary
 tmp/
 temp/
+
+# SQLite temporary files
+*.db-shm
+*.db-wal
