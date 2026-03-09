@@ -89,3 +89,4 @@ temp/
 # SQLite temporary files
 *.db-shm
 *.db-wal
+.claude
