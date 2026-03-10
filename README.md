@@ -14,6 +14,9 @@
     <img src="https://img.shields.io/badge/PyTorch-2.0+-EE4C2C?logo=pytorch&logoColor=white" alt="PyTorch">
     <img src="https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white" alt="Docker">
   </p>
+  <p align="center">
+    <a href="https://coronaryanalyser.com"><strong>🌐 Live Demo → coronaryanalyser.com</strong></a>
+  </p>
 </p>
 
 ---
