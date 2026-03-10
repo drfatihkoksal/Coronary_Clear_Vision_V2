@@ -40,7 +40,6 @@
 - [Frontend Panels](#frontend-panels)
 - [Testing](#testing)
 - [Environment Variables](#environment-variables)
-- [License](#license)
 
 ---
 
@@ -624,14 +623,6 @@ The following pre-trained models should be placed in the `models/` directory:
 3. Commit your changes (`git commit -m 'Add your feature'`)
 4. Push to the branch (`git push origin feature/your-feature`)
 5. Open a Pull Request
-
----
-
-## License
-
-This project is proprietary research software. All rights reserved.
-
----
 
 <p align="center">
   <sub>Built with ❤️ for coronary artery research</sub>
