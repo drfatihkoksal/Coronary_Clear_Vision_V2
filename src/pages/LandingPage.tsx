@@ -148,7 +148,7 @@ export function LandingPage() {
             <section className="py-24 bg-[#0a0a12] border-y border-white/5">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="text-center mb-16">
-                        <h2 className="text-3xl md:text-5xl font-bold mb-6">Complete Diagnostic Toolset</h2>
+                        <h2 className="text-3xl md:text-5xl font-bold mb-6">Comprehensive Research Toolset</h2>
                         <p className="text-white/60 max-w-2xl mx-auto">
                             Beyond Radial Wall Strain, access a full suite of professional-grade analysis tools integrated into a single seamless workflow.
                         </p>
